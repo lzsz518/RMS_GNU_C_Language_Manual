@@ -1,7 +1,7 @@
 # GNU C语言手册 简体中文版
 
 本项目是Richard Stallman的GNU C Language_Manual的中文翻译，原文请见：
-[GNU C Language Manual](https://www.cyberciti.biz/files/GNU-C-Language-Manual/GNU%20C%20Language%20Manual.html#The-First-Example)
+[GNU C Language Manual](https://www.cyberciti.biz/files/GNU-C-Language-Manual/GNU%20C%20Language%20Manual.html)
 
 [前言](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/00.01_Preface.org)
 
