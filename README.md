@@ -1,4 +1,4 @@
-# GNU C语言手册 简体中文版
+# GNU C语言手册 中文版
 
 Richard Stallman的GNU C 语言手册的中文翻译，原文请见：
 [GNU C Language Manual](https://www.cyberciti.biz/files/GNU-C-Language-Manual/GNU%20C%20Language%20Manual.html)
