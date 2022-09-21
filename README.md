@@ -7,7 +7,7 @@
 
 [01 第一个例子](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/01_FirstExample.org)
 
-[02 完整的程序](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/03_StorageAndData.org)
+[02 完整的程序](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/02_ACompleteProgram.org)
 
 [03 存储空间与数据](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/03_StorageAndData.org)
 
