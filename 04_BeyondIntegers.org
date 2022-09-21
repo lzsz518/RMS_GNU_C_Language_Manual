@@ -1,0 +1,59 @@
+#+title: 04 超越整数
+
+* 超越整数
+
+目前为止，我们展现的程序只对整数进行操作。本章中我们将展现处理非整数和数值数组。
+
+** 一个处理非整数的例子
+
+下面的函数将操作并返回 /浮点数(floating point)/ 。 浮点数以一个小数一个2为底数的幂表示。
+这个函数将计算从参数传递进来的三个数的平均值：
+
+#+begin_src c
+  double
+  average_of_three (double a, double b, double c)
+  {
+    return (a + b + c) / 3;
+  }
+#+end_src
+
+参数a,b和c的值可以不必是整数，即使他们是整数但他们的平均值一般也不是整数。
+
+C语言通常使用 /double/ 类型来计算浮点数。
+
+打印 /double/ 类型时需要使用 '%f'代替'%d':
+
+#+begin_src c
+  printf ("Average is %f\n",
+          average_of_three (1.1, 9.8, 3.62));
+#+end_src
+
+当调用 /printf/ 必须传递 /double/ 给 '%f' 和 /int/ 给 '%d'。如果传递了错误的类型那么将
+输出错误的信息。
+
+下面时完整的求取三个数平均值的程序：
+
+#+begin_src c
+  double
+  average_of_three (double a, double b, double c)
+  {
+    return (a + b + c) / 3;
+  }
+
+  int
+  main (void)
+  {
+    printf ("Average is %f\n",
+            average_of_three (1.1, 9.8, 3.62));
+    return 0;
+  }
+#+end_src
+
+以后我们将不再展示 /main/ 函数。相反的我们鼓励你自己书写它。
+
+** 使用数组的例子
+
+如果一个函数只接受并计算三个数的平均值那么它的作用非常有限。更通用的函数应该可以接受一个没有数量
+限制的数组中所有数的平均值。这就需要把数组作为参数传递给函数。数组是在内存中的一个对象，这个对象
+是一系列拥有相同数据类型的数值。本章将展示数组的基本概念和如何把数组当参数传递。详情请见数组章节。
+
