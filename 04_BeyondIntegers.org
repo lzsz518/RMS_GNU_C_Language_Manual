@@ -45,7 +45,7 @@ C语言通常使用 /double/ 类型来计算浮点数。
   {
     printf ("Average is %f\n",
             average_of_three (1.1, 9.8, 3.62));
-    return 0;
+    r:eturn 0;
   }
 #+end_src
 
@@ -57,3 +57,124 @@ C语言通常使用 /double/ 类型来计算浮点数。
 限制的数组中所有数的平均值。这就需要把数组作为参数传递给函数。数组是在内存中的一个对象，这个对象
 是一系列拥有相同数据类型的数值。本章将展示数组的基本概念和如何把数组当参数传递。详情请见数组章节。
 
+这个函数定义接受多个浮点数进行求平均值，参数数以 /double/类型传递。第一个参数length指明有多少个
+浮点数数被传递个函数。第二个参数input_data是存储需要计算平均值的浮点数的数组。
+
+#+begin_src c
+  double
+  avg_of_double (int length, double input_data[])
+  {
+    double sum = 0;
+    int i;
+
+    for (i = 0; i < length; i++)
+      sum = sum + input_data[i];
+
+    return sum / length;
+  }
+#+end_src
+
+这里介绍表达式如何引用数组中的元素：input_data[i]的意思是在input_data数组中索引位置i的元素。索引
+可以是任何整形表达式。这里使用表达式i。
+
+数组的最小索引值是0而不是1，最大索引值是数组含有的元素数量减1。(这被称为0起点索引--zero-origin indexing)
+
+这个例子也介绍了如何声明一个数组参数。这种声明语法是以数组中的元素为模型的，就像 /double foo/ 声明foo是一个
+double类型， /double input_data[]/ 声明input_data数组中的每一个元素都是double类型。因此input_data是一个
+double类型的数组。
+
+当声明一个数组参数时，并不是必须告诉函数这个数组的长度(拥有多少个元素)。在这个例子中input_data没有长度信息。
+这也是为什么函数需要另一个参数--length来告诉avg_of_double函数数组中有多少个元素。
+
+** 使用数组
+
+调用avg_of_double函数需要传递一个数组，例如：
+
+#+begin_src c
+  {
+    /* The array of values to average.  */
+    double nums_to_average[5];
+    /* The average, once we compute it.  */
+    double average;
+
+    /* Fill in elements of nums_to_average.  */
+
+    nums_to_average[0] = 58.7;
+    nums_to_average[1] = 5.1;
+    nums_to_average[2] = 7.7;
+    nums_to_average[3] = 105.2;
+    nums_to_average[4] = -3.14159;
+
+    average = avg_of_double (5, nums_to_average);
+
+    /* …now make use of average… */
+  }
+#+end_src
+
+在存储数值到数组元素中的赋值表达式的左侧再次展示了数组下标表达式。
+
+上述代码也展示了如何声明一个局部数组变量： /double nums_to_average[5]; 。因为声明需要分配内存空间给数组所以
+需要知道数组的长度。你可以使用任何结果为整数的表达式来指定长度，但是本例直接使用常数5。
+
+当使用数组名字时它等同于一个表达式并且在作为参数以 /avg_of_double(5, nums_to_average)/形式传递给avg_of_double
+函数时它代表了数组存储空间的地址。
+
+当调用avg_of_double时避免使用常量作为数组长度可以让程序更易于维护。这样一来，如果数组包含的元素数量变化之后不需要修改
+调用代码。实现这个目的的途径是使用 /sizeof/ 操作符：
+
+#+begin_src c
+  average = avg_of_double ((sizeof (nums_to_average)
+                            / sizeof (nums_to_average[0])),
+                           nums_to_average);
+#+end_src
+
+这里使用数组占用的字节数除以一个元素占用的字节数计算数组含有的元素数量。详情见Type Size章节。
+
+本章将不会展示当avg_of_double函数执行执行并存储数据到average变量中后会发生什么。据推测，接下来会有更多的代码
+以某种方式使用这个结果。(为什么计算了平均值而不使用它？)这不在本章讨论范围内。
+
+** 数组例子的变种
+
+调用avg_of_double函数之前有两个声明使用了校内沟通的数据类型：
+
+#+begin_src c
+  /* The array of values to average.  */
+  double nums_to_average[5];
+  /* The average, once we compute it.  */
+  double average;
+#+end_src
+
+在C语言中你可以像这样合并他们：
+
+#+begin_src c
+  double nums_to_average[5], average;
+#+end_src
+
+这将同时声明nums_to_average为double类型数组和average为double类型变量。
+
+然而，可以组合他们并不意味着必须这么做。如果给变量写注释有用，对通常是有用的，那么就需要分开声明他们并分别给他们
+写上注释。
+
+我们在前面逐个给nums_to_average的元素赋值，但是使用初始化器来赋值会更方便：
+
+#+begin_src c
+  {
+    /* The array of values to average.  */
+    double nums_to_average[]
+      = { 58.7, 5.1, 7.7, 105.2, -3.14159 };
+
+    /* The average, once we compute it.  */
+    average = avg_of_double ((sizeof (nums_to_average)
+                              / sizeof (nums_to_average[0])),
+                             nums_to_average);
+
+    /* …now make use of average… */
+  }
+#+end_src
+
+数组初始化器是使用逗号分隔的数值列表，并将其包裹在大括号中。详情见：初始化器章节。
+
+需要注意的是在声明时并没有指明nums_to_average数组的长度，因为长度来自于初始化器。有5个元素在初始化器中，所以nums_to_average
+的长度为5。如果增加一个元素到初始化器中那么nums_to_average将拥有6个元素。
+
+因为使用了sizof操作符来计算元素长度所以代码将操作数组中的所有元素无论多少个元素存储于其中。
