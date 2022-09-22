@@ -13,3 +13,5 @@ Richard Stallman的GNU C 语言手册的中文翻译，原文请见：
 
 [04 超越整数](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/04_BeyondIntegers.org)
 
+[05 词汇语法](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/05_LexicalSyntax.org)
+
