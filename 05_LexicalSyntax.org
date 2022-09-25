@@ -33,3 +33,91 @@ GNU C 源代码通常使用1960年代为英语定义的[[https://en.wikipedia.or
 (详情见统一编码字符章节)这就指定了非ASCII字符，而不需要在源文件中放置一个真正的非ASCII字符。
 
 对于某些特定字符的C语言也允许使用一种被称作二合字符的双字符代替。详情见双字符章节。
+
+** 空白
+
+空白是一种在文件中存在但是却不显示出来的字符。C语言需要空格来分隔两个连续的标识符，或将标识符与数字常数分开。
+还有几种可以使用空格的情况在稍后章节讨论；也可以使用空格使代码更具可读性。
+
+空格和制表符(tab)在C语言中都按空白字符处理，换行也是如此。你可以用换行符（也叫换行符或LF）、CR（回车符）
+或CRLF序列（两个字符：回车符和换行符）来表示换行。
+
+换页字符(/formfeed/)，Control-L，传统上是用来将文件分成若干页。在源代码中，它仍然是这样使用的，而且产生漂亮的源代码
+打印输出的工具仍然在每个 "formfeed "字符之后开始一个新的页面。将代码分成由formfeed字符分隔的页面是一个很好的方法，
+可以使代码的每一部分便于理解，并向其他程序员展示它们的开始和结束。
+
+垂直制表符，Control-K，传统上是用来使打印前进到页面的下一个部分。我们知道在源代码中没有特别的理由使用它，
+但它在C语言中仍然被认为是空白。
+
+注释在语法上也等同于空白。
+
+** 注释
+
+注释所包含的文本并不会对程序的执行产生任何影响。
+
+注释的意义是对他人解释代码的含义。注释对于代码的重大作用是--它们提供了代码的背景信息来帮助其他程序员来理解为什这些
+代码要以现在的方式编写；对你来说如果半年之后再次看到这段代码注释也有助你回忆起当时的思路。
+
+过时且不正确的注释对于理解代码会起到反作用,所以程序员有责任在更新代码之后也更新注释。
+
+C语言允许使用两种注释风格，传统风格和C++风格。传统风格以 '/*' 开始， '*/' 结束。例如：
+
+#+begin_src c
+  /*This is a comment in traditional C syntax */
+#+end_src
+
+传统注释可以包含 '/*'，但是这些分割符并不能嵌套。总是第一个'*/' 作为注释的结束而不论之前包含多少'/*'。
+
+#+begin_src c
+  /* This /* is a comment */ But this is not! */
+#+end_src
+
+单行注释 /line comment/ 以 '//' 开始直到行尾结束。例如：
+
+#+begin_src c
+  //This is a comment in C++ Style.
+#+end_src
+
+单行注释可以嵌套，因为 '//' 在一个注释行中也是注释。
+
+#+begin_src c
+  // this whole line is // one comment
+  This is code, not comment.
+#+end_src
+
+把单行注释嵌套进多行注释是安全的，反之亦然。
+
+#+begin_src c
+  /* traditional comment
+     // contains line comment
+     more traditional comment
+   ,*/ text here is not a comment
+
+  // line comment /* contains traditional comment */
+#+end_src
+
+需要小心的是行注释将传统注释的开始符号'/*'注释掉。如果分隔符'/*'已经在一个注释中那么它不会开始一个新的注释。
+
+#+begin_src c
+  // line comment  /* That would ordinarily begin a block comment.
+     Oops! The line comment has ended;
+     this isn't a comment any more.  */
+#+end_src
+
+注释不会被认为是一个字符串常量。"/* blah */" 是字符串常量‘/* blah */’，不是一个空字符串。
+
+为了便于阅读本手册中使用可变宽字体作为注释的文本字体，但这种字体的区别在源文件中并不存在。
+
+注释在句法上等于空白字符，所以它可以被用来分割记号，因此：
+
+#+begin_src c
+  int/* comment */foo;
+  is equivalent to
+    int foo;
+#+end_src
+
+但是清晰的代码重视使用真正的空白字符来从代码中分隔注释。
+
+** 标识符
+
+
