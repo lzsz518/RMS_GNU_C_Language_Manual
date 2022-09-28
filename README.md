@@ -15,3 +15,4 @@ Richard Stallman的GNU C 语言手册的中文翻译，原文请见：
 
 [05 词汇语法](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/05_LexicalSyntax.org)
 
+[06 算术运算](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/06_Arithmetic.org)
