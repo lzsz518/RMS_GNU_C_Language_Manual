@@ -20,3 +20,5 @@ Richard Stallman的GNU C 语言手册的中文翻译，原文请见：
 [07 赋值表达式](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/07_AssignmentExpressions.org)
 
 [08 执行控制表达式](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/08_ExecutionControlExpressions.org)
+
+[09 二元运算符语法](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/09_BinaryOperatorGrammar.org)
