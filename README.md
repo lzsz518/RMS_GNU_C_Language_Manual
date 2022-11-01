@@ -22,3 +22,5 @@ Richard Stallman的GNU C 语言手册的中文翻译，原文请见：
 [08 执行控制表达式](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/08_ExecutionControlExpressions.org)
 
 [09 二元运算符语法](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/09_BinaryOperatorGrammar.org)
+
+[10 执行顺序](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/10_OrderOfExecution.org)
