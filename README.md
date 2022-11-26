@@ -27,4 +27,4 @@ Richard Stallman的GNU C 语言手册的中文翻译，原文请见：
 
 [11 基本数据类型](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/11_PrimitiveDataTypes.org)
 
-[1 常数](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/12_Constants.org)
+[12 常数](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/12_Constants.org)
