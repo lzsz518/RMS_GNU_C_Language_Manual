@@ -202,3 +202,74 @@ n次方。
 
 字符常数是 *int* 类型。然而字符的值却被初始化成 *char* 类型，然后转换成 *int* 。如果字符值大于127(八进制数0177)，那么
 对于 *char* 类型为8比特有符号数的平台转换的结果在 *int* 中有可能是负数。
+
+** 字符串常数
+
+字符串常数由一系列卸载双引号之间的字符组成。在字符串常数中书写'"'，'\'和'\n'等特殊字符和在字符常数中的方法一样。在字符串
+常量里单引号不需要转义字符('\')。
+
+字符串常数定义了一个以字符0结尾包含特定字符的数组。使用字符串常数如同使用包含相同内容的数组。一般情况下，
+字符串常量的字节长度比其中写入的字符数大1。
+
+和C语言里的数组一样，在表达式中使用字符串常量其会被转换成一个指向数组中第一个元素的指针(详情请见指针章节)。
+因为这个指针是指向以 *char* 类型为元素的数组所以这个指针将是 *char ** 类型的。 *char* 是一个指针类型的类型指定的例子。
+(详情请见指针类型指定)。 字符串变量也通常*char** 类型，而不仅仅只有字符串常量使用它它。
+
+因此，字符串常数 *"Foo!"* 近乎等价于声明一个如下数组：
+
+#+begin_src c
+  char string_array_1[] = {'F', 'o', 'o', '!', '\0' };
+#+end_src
+
+然后在程序中使用名为 *string_array_1* 的数组。字符串常数与数组有两点不同：
+
+ * 字符串常数并不定义数组名。
+ * 字符串常数多半存储在只读内存区域。
+
+字符串常数的文本中不允许使用换行符。这条禁令的目的是捕获丢失结束双引号'"'的错误。要在字符串常数中使用换行请使用'\n'转义字符。
+
+源代码中字符串常量内的真正空字符会导致警告。 要在字符串常量中间放置一个空字符，请使用‘\0’或‘\000’。
+
+连续的字符串常量将被视为有效字符串而连接起来，因此：
+#+begin_src c
+  "Fo" "o!"   等价于   "Foo!" 
+#+end_src
+
+这是书写包含多行的字符串非常有用的方法，例如：
+
+#+begin_src c
+  "This message is so long that it needs more than\n"
+  "a single line of text.  C does not allow a newline\n"
+  "to represent itself in a string constant, so we have to\n"
+  "write \\n to put it in the string.  For readability of\n"
+  "the source code, it is advisable to put line breaks in\n"
+  "the source where they occur in the contents of the\n"
+  "constant.\n"
+#+end_src
+
+反斜杠和换行符的序列在 C 程序中的任何地方都被忽略，也包括在字符串常数中。 因此，你可以这样书写多行字符串常数：
+
+#+begin_src c
+  "This is another way to put newlines in a string constant\n\
+  and break the line after them in the source code."
+#+end_src
+
+然而，推荐使用的方式是串联的方式。
+
+
+你也可以用这样反常的方式书写字符串：
+
+#+begin_src c
+  "Fo\
+  o!"
+#+end_src
+
+不过做个人吧，请使用正常方式书写：
+
+#+begin_src c
+  "Foo!"
+#+end_src
+
+需要非常小心的避免将一个字符串常数当参数传递给一个可能修改该字符串的函数。存储字符串常数的内存区域多半是只读的，修改这部分内存中的
+内容会触发终止函数执行的 *SIGSEGV* 信号。(详见信号章节)。更糟糕的是如果那部分内存不是只读的时候那么函数修改该字符串常数之后将会导致
+由编译器统一生成的其它字符串常量的内容被破坏。
