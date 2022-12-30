@@ -30,3 +30,5 @@ Richard Stallman的GNU C 语言手册的中文翻译，原文请见：
 [12 常数](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/12_Constants.org)
 
 [13 类型大小](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/13_TypeSize.org)
+
+[14 指针](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/14_Pointers.org)
