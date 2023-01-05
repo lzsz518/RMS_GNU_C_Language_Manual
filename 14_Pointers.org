@@ -268,4 +268,100 @@ i本身，它们两个是等价的，这也证明了&i是可用的。
 如果一个操作数是 *void ** 类型(详见无类型指针章节)而另外一个操作数是其他类型那么比较操作符会先将 *void ** 类型指针转换为另外一个指针的类型
 然后再比较它们。(在标准C语言中这是不允许的，但是 GNU C中没有问题)
 
-比较操作符也允许整数0与一个指针进行比较。原理是比较操作符会将0准换为与另一个操作数类型相同的空指针。
+比较操作符也允许整数0与一个指针进行比较。原理是比较操作符会将0转换为与另一个操作数类型相同的空指针。
+
+* 指针算术
+
+将指针与一个整数相加(正整数或负整数)在C语言中是合法的。指针的算术运算假设指针指向数组中的一个元素，那么将它与整数相加时会将指针向前或
+向后移动那个整数的数值个元素。下面的例子展示如何通过将指针与一个整数相加来实现指针移动到数组中下标更大的元素：
+
+#+begin_src c
+  void
+  incrementing_pointers ()
+  {
+    int array[5] = { 45, 29, 104, -3, 123456 };
+    int elt0, elt1, elt4;
+
+    int *p = &array[0];
+    /* Now p points at element 0.  Fetch it.  */
+    elt0 = *p;
+
+    ++p;
+    /* Now p points at element 1.  Fetch it.  */
+    elt1 = *p;
+
+    p += 3;
+    /* Now p points at element 4 (the last).  Fetch it.  */
+    elt4 = *p;
+
+    printf ("elt0 %d  elt1 %d  elt4 %d.\n",
+            elt0, elt1, elt4);
+    /* Prints elt0 45  elt1 29  elt4 123456.  */
+  }
+#+end_src
+
+下面的例子展示如何通过将指针与一个负整数相加来实现指针移动到数组中小标更小的元素：
+
+#+begin_src c
+  void
+  decrementing_pointers ()
+  {
+    int array[5] = { 45, 29, 104, -3, 123456 };
+    int elt0, elt3, elt4;
+
+    int *p = &array[4];
+    /* Now p points at element 4 (the last).  Fetch it.  */
+    elt4 = *p;
+
+    --p;
+    /* Now p points at element 3.  Fetch it.  */
+    elt3 = *p;
+
+    p -= 3;
+    /* Now p points at element 0.  Fetch it.  */
+    elt0 = *p;
+
+    printf ("elt0 %d  elt3 %d  elt4 %d.\n",
+            elt0, elt3, elt4);
+    /* Prints elt0 45  elt3 -3  elt4 123456.  */
+  }
+#+end_src
+
+在C语言中如果一个指针的值是通过另一个指针与一个整数相加得到的那么通过将这两个指针的值相减就可以得到那个整数。
+
+#+begin_src c
+  void
+  subtract_pointers ()
+  {
+    int array[5] = { 45, 29, 104, -3, 123456 };
+    int *p0, *p3, *p4;
+
+    int *p = &array[4];
+    /* Now p points at element 4 (the last).  Save the value.  */
+    p4 = p;
+
+    --p;
+    /* Now p points at element 3.  Save the value.  */
+    p3 = p;
+
+    p -= 3;
+    /* Now p points at element 0.  Save the value.  */
+    p0 = p;
+
+    printf ("%d, %d, %d, %d\n",
+            p4 - p0, p0 - p0, p3 - p0, p0 - p3);
+    /* Prints 4, 0, 3, -3.  */
+  }
+#+end_src
+
+加法运算并不知道指针是否真正指向一个数组，它只是简单的将指针的值加上一个整数数值(加数需要乘以指针指向的对象的类型的字节数)。
+当被加的指针和结果指针指向同一个数组时那么结果才是合法的。
+
+*警告* ：只有专家才可以对涉及不同内存对象的指针进行算术运算。
+
+两个指针的差可以是 *int* 型或 *long* 型(详见整数类型)。使用stddef.h文件中的宏定义 *ptrdiff_t* 来定义指针的差值类型是明智的方法。
+
+指针减法的定义与指针与负整数的加法一致， *(p3 - p1) + p1* 等于 *p3* ，这符合基础代数。
+
+在标准C语言中指针加法和减法不允许对 void * 类型指针使用，因为虚指针指向的对象的字节数是未知的。同样的，也不能对函数指针使用加减法。
+然而这些在GNU C 中都是可行的，这些操作都将指针指向的对象的字节数视为1。
