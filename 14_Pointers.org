@@ -520,3 +520,40 @@ i本身，它们两个是等价的，这也证明了&i是可用的。
 或者它可能会返回错误对齐的 int 的值(详见阅信号)。如果它“有效”，它可能会非常慢。它还会导致别名混淆(请参阅别名)。
 
 *警告* ： 使用不正确对齐的指针是有风险的——除非真的有必要，否则不要这样做。
+
+* 指针与整数之间的转换
+
+在现代计算机中地址就是一个简单的数值。它的取值范围和整型变量相同。你可以转换一个指针到一个适合的整数类型而不损失任何
+信息，反之亦然。适合的整数类型是 *uintptr_t* (无符号类型) 和 *intptr_t* (有符号类型)，他们都被定义在 *stdint.h* 中。
+例如：
+
+#+begin_src c
+  #include <stdint.h>
+  #include <stdio.h>
+  void
+  print_pointer (void *ptr)
+  {
+  uintptr_t converted = (uintptr_t) ptr;
+  printf ("Pointer value is 0x%x\n",
+  (unsigned int) converted);
+  }
+#+end_src
+
+模板中的输出控制符 '%x' 的意思是被打印出来的参数将以十六进制的形式呈现。很明显这将使用 *unitptr_t* ，因为十六进制数被打印时
+会被当作无符号类型，但这其实无所谓：所有的 *printf* 都把整个比特序列作为数字的一部分。
+
+*警告* ： 将指针转换到整数存在隐患--非必要别转换。
+
+* 打印指针
+
+使用输出控制符 '%p' 可以打印指针的数值。例如：
+
+#+begin_src c
+  void
+  print_pointer (void *ptr)
+  {
+  printf ("Pointer value is %p\n", ptr);
+  }
+#+end_src
+
+使用输出控制符 '%p' 打印指针时会在数值前附加 '0x' 符号，并将指针打输出位适合的整数类型。
