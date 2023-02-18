@@ -99,3 +99,79 @@ struck intlistlink 定之前使用类型 struct intlistlink *。这是因为在�
   …foo.l.next->next->datum…
 #+end_src
 
+* 动态内存分配
+
+若要给一个对象动态分配内存可以使用库函数 *malloc* (详见： [[https://www.gnu.org/software/libc/manual/html_mono/libc.html#Basic-Allocation][The GNU C Library ]]GNU C 库函数手册)。这里演示如何动态分配一个
+*struct intlistlink* 对象。若要使这段代码可以正常工作需要包含 *stdlib.h* :
+
+#+begin_src c
+  #include <stddef.h>  /* Defines NULL. */
+  #include <stdlib.h>  /* Declares malloc.  */
+
+  …
+
+  struct intlistlink *
+  alloc_intlistlink ()
+  {
+    struct intlistlink *p;
+
+    p = malloc (sizeof (struct intlistlink));
+
+    if (p == NULL)
+      fatal ("Ran out of storage");
+
+    /* Initialize the contents. */
+    p->datum = 0;
+    p->next = NULL;
+
+    return p;
+  }
+#+end_src
+
+*malloc* 的返回值是 *void* 类型，但是其赋值给 *p* 的时候会自动转换到 *struct intlistlink* *** 。 *malloc* 的返回值
+总是充分对齐的(详见对其章节)，这使其可以转换到任意类型。
+
+检测p是否为空是必要的因为当没有足够的可用内存时 *malloc* 会返回一个空指针。我们假设程序定义了 *fatal* 函数来向用户报告
+致命错误。
+
+这里展示如何在链表前面增加一个整数：
+
+#+begin_src c
+  struct intlistlink *my_list = NULL;
+
+  void
+  add_to_mylist (int my_int)
+  {
+    struct intlistlink *p = alloc_intlistlink ();
+
+    p->datum = my_int;
+    p->next = mylist;
+    mylist = p;
+  }
+#+end_src
+
+释放动态分配的对象的方法是调用 *free* 函数。这里是使用 *free* 函数释放链表中所有对象的例子：
+
+#+begin_src c
+  void
+  free_intlist (struct intlistlink *p)
+  {
+    while (p)
+      {
+        struct intlistlink *q = p;
+        p = p->next;
+        free (q);
+      }
+  }
+#+end_src
+
+我们必须在一个对象被释放之前从其中提取 *next* 指针，因为 *free* 会删除对象中的数据。相同的原因，程序不应该使用被释放过
+的对象中的元素。要确保这些不会发生最好清楚存储链表的变量，例如：
+
+#+begin_src c
+  free_intlist (mylist);
+
+  mylist = NULL;
+#+end_src
+
+
