@@ -242,7 +242,7 @@ struck intlistlink 定之前使用类型 struct intlistlink *。这是因为在�
 
 * 折叠结构体
 
-在GNU C中你可以通过在 *struct* 关键字之后或结构体类型声明之后使用 *__attribute__((packed))* 强制结构体内存布局不使用间隙。
+在GNU C中你可以通过在 *struct* 关键字之后或结构体类型声明之后使用 *__attribute__((packed))* 强制结构体内存布局不进行内存对齐。
 例如：
 
 #+begin_src c
@@ -254,7 +254,7 @@ struck intlistlink 定之前使用类型 struct intlistlink *。这是因为在�
   };
 #+end_src
 
-假设 *int* 的对齐方式是4字节，在不使用 *__attribute__((packed))* 时这个结构体将占用12字节内存(如同上一章的描述)。使用
+假设 *int* 的对齐方式是4字节，在不使用 *__attribute__((packed))* 时这个结构体将占用12字节内存(如上一章所述)。使用
 *__attribute__((packed))* 后它只占用6字节内存，这相当于每一个变量实际占用内存字节数的和。
 
 使用 *__attribute__((packed))* 会经常导致字段不会按照其应用的方式进行对齐。在获取未进行内存对齐的字段的地址时可能会得到一个
