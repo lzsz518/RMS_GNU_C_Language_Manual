@@ -374,3 +374,23 @@ struck intlistlink 定之前使用类型 struct intlistlink *。这是因为在�
 常量字段可以通过两种方式获取值：通过结构体的整体初始化和通过有用常量字段的结构体的指针来指向一个该字段已经拥有值的结构体对象。
 
 任何常量字段都会使结构体赋值变得不可能(详见结构体赋值)，这是因为结构体赋值会对所有字段进行一对一的赋值。
+
+* 长度为0的数组
+
+GNU C允许长度为0的数组。这对于位于结构体最后的元素作为一个变长对象的首地址非常有用。下面的例子展示如何构造一个变长的结构体来保存
+根据 *this_length* 来分配内存的列表：
+
+#+begin_src c
+  struct line {
+    int length;
+    char contents[0];
+  };
+
+  struct line *thisline
+    = ((struct line *)
+       malloc (sizeof (struct line)
+               + this_length));
+  thisline->length = this_length;
+#+end_src
+
+在C90标准中必须要让 *contents* 的长度为1，这意味着要么浪费存储空间要么使给予 *malloc* 的参数复杂化。
