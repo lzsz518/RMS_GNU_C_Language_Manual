@@ -541,3 +541,38 @@ GNU C会认为 *p->size* 在赋值给 *x* 时仍然是0。编译器"知道" *q* 
 进行这样的操作。然而，当你需要这么做，联合体总会有办法做到。
 
 赋值对于联合体来说就是拷贝素有数据。
+
+* 使用联合体打包数据
+
+有时候我们设计联合体的目的是打包多种内存对象到一个特定大小的内存空间中。例如：
+
+#+begin_src c
+  union bytes8
+  {
+    long long big_int_elt;
+    double double_elt;
+    struct { int first, second; } two_ints;
+    struct { void *first, *second; } two_ptrs;
+  };
+
+  union bytes8 *p;
+#+end_src
+
+以上联合体可以被看作指针 *p* 指向的8字节有符号整数(p->big_int_elt)，或者一个有符号浮点数(p->double_elt)，或者一个整数对
+(p->two_ints.first 和 p->two_ints.second)，或者一个指针对(p->two_ptrs.first 和 p->two_ptrs.second)。
+
+要使用联合体节省存储空间，需要考虑所有类型所占字节的多少。上面的联合体期望指针与 *int* 类型占据相相同的字节数。在其它指针占用
+8个字节的机器上这个联合体可能不会按照预期的方式工作。联合体本身的功能是正常的--如果你通过two_ints存储两个值并通过two_ints提取
+它们，你将得到相同的整数--但有部分程序期望联合体为8字节长时可能会出错，或者至少会占用更多的空间。
+
+以上的例子展示了一个结构体类型在没有标签时是很有用的。另一种有效地获得相同结果的方法是将数组作为联合的成员：
+
+#+begin_src c
+  union eight_bytes
+  {
+    long long big_int_elt;
+    double double_elt;
+    int two_ints[2];
+    void *two_ptrs[2];
+  };
+#+end_src
