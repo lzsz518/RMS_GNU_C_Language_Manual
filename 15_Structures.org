@@ -576,3 +576,122 @@ GNU C会认为 *p->size* 在赋值给 *x* 时仍然是0。编译器"知道" *q* 
     void *two_ptrs[2];
   };
 #+end_src
+
+* 类型转换到结构体
+
+在GNU C中你可以显式转换任意属于联合体备选类型的变量到联合体类型；例如：
+
+#+begin_src c
+  (union eight_bytes) (long long) 5
+#+end_src
+
+这样的转换会让数值5称为一个拥有 *big_int_elt*备选类型的联合体 *eight_bytes* 的类型。
+
+类型转换必须完全契合联合体中的某一个备选类型，所以下面的转换是非法的：
+
+#+begin_src c
+  (union eight_bytes) 5  /* 错误!  5 是 int. */
+#+end_src
+
+联合体之间的类型转换看起来与其它类型转换一样，除非特别指定被转换的类型是一个联合体。你可以使用结构体标签或被类型定义的名字来指定结构体类型。(详见定义类型名)
+
+在联合体赋值时对右边的操作数使用类型转换后赋值给一个联合体类型的变量就如同存储一个数值到联合体的某个备选类型，例如：
+
+#+begin_src c
+  union foo u;
+
+  u = (union foo) x   means   u.i = x
+
+  u = (union foo) y   means   u.d = y
+#+end_src
+
+你也可以使用联合体类型转换作为函数的参数：
+
+#+begin_src c
+  void hack (union foo);
+  …
+  hack ((union foo) x);
+#+end_src
+
+* 结构体构造器
+
+你可以通过将结构体的类型写在括号中来并在之后接着书写一个初始化器来构造一个结构体的值，这在声明结构体类型的变量时是合法的。例如对于以下结构体：
+
+#+begin_src c
+  struct foo {int a; char b[2];} structure;
+#+end_src
+
+你可以以下形式创建一个类型为 *struct foo* 的数值：
+
+#+begin_src c
+  ((struct foo) {x + y, 'a', 0})
+#+end_src
+
+上面指定 *x + y* 的值赋给字段 *a* ，字符 'a' 赋给字段 *b* 的第0个元素，空字符赋给字段 *b* 的第一个元素。
+
+构造器外围的括号不是必须的，但是我们建议使用它以使表达式的嵌套关系更加清晰。
+
+你也可以通过下面的方式明晰两个字段在初始化时的嵌套方式：
+
+#+begin_src c
+  ((struct foo) {x + y, {'a', 0} })
+#+end_src
+
+上面的初始化方式都与下面的语句表达式等价(详见语句表达式章节)：
+
+#+begin_src c
+  ({
+    struct foo temp = {x + y, 'a', 0};
+    temp;
+  })
+#+end_src
+
+你也可以用同样的方式创建联合体数值，但是这没什么用处因为对于联合体这样的创建方式就等于类型转换：
+
+#+begin_src c
+    ((union whosis) {value})
+  is equivalent to
+    ((union whosis) (value))
+#+end_src
+
+* 无名类型字段
+
+结构体或者联合体可以包换没有名字的结构体和联合体作为字段。例如：
+
+#+begin_src c
+  struct
+  {
+    int a;
+    union
+    {
+      int b;
+      float c;
+    };
+    int d;
+  } foo;
+#+end_src 
+
+你可以使用 *foo* 访问无名联合体字段，就如同它们是与联合体处于同一级别的独立字段一样：
+
+#+begin_src c
+  foo.a = 42;
+  foo.b = 47;
+  foo.c = 5.25; //覆盖 foo.b 的值 
+  foo.d = 314;
+#+end_src
+
+避免使用可能产生混淆的字段名，例如下面的定义：
+
+#+begin_src c
+  struct
+  {
+    int a;
+    struct
+    {
+      int a;
+      float b;
+    };
+  } foo;
+#+end_src
+
+这将使 *foo.a* 无法引用到任何一个字段。GNU C 会视对这种模糊的定义为一个错误并报告它。
