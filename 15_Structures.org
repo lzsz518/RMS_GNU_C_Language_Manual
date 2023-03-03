@@ -695,3 +695,149 @@ GNU C会认为 *p->size* 在赋值给 *x* 时仍然是0。编译器"知道" *q* 
 #+end_src
 
 这将使 *foo.a* 无法引用到任何一个字段。GNU C 会视这种模糊的定义为一个错误并报告它。
+
+* 不完整类型
+
+没有被完整定义的类型被称为 /不完整类型/ 。当代码向前引用时结构体和联合体类型是不完整类型，例如在定义 *struct foo* 类型之前。
+当没有指定数组类型的长度时它也是不完整类型。
+
+你可以使用不完整类型来声明变量和者字段，或者用于函数参数与返回值。将操作符 *sizeof* 和 *_Alignof* 用于不完整类型时它们会返回一个错误。
+
+无论如何，你都可以将指针定义成一个不完整类型，并且用这个类型声明一个变量或者在字段。通常来说，你可以使用这种指针做任何事情除过对它进行解引用。例如：
+
+#+begin_src c
+  extern void bar (struct mysterious_value *);
+
+  void
+  foo (struct mysterious_value *arg)
+  {
+    bar (arg);
+  }
+
+  …
+
+  {
+    struct mysterious_value *p, **q;
+
+    p = *q;
+    foo (p);
+  }
+#+end_src
+
+上面的例子是合法的因为代码并不会试图理解 *p* 实际指向哪里，只是用它进行指针传递。
+(据推测，bar是在其他文件中定义的，并且该文件确实有 *struct mysterious_value* 的定义。)
+然而，解引用指针会得到一个错误；这需要相应的结构类型的定义。
+
+* 交织在一起的不完整类型
+
+当一些结构体包含其它结构体的指针你可以以任意顺序定义它们因为对于后面的指针来说前面的都是不完整类型。因此可以像下面一样定义：
+
+#+begin_src c
+  /* An employee record points to a group.  */
+  struct employee
+  {
+    char *name;
+    …
+    struct group *group;  /* incomplete type.  */
+    …
+  };
+
+  /* An employee list points to employees.  */
+  struct employee_list
+  {
+    struct employee *this_one;
+    struct employee_list *next;  /* incomplete type.  */
+    …
+  };
+  
+  /* A group points to one employee_list.  */
+  struct group
+  {
+    char *name;
+    …
+    struct employee_list *employees;
+    …
+  };
+#+end_src
+
+* 类型标签
+
+在 *struct*(详见结构体章节) ， *union* (详见联合体章节或枚举章节) 之后的名字被称为 /类型标签/。在C语言中，类型标签永远
+不会与变量名或函数名产生冲突；类型标签拥有与它们不同的命名空间。因此，下面代码中的名字并不会产生冲突：
+
+#+begin_src c
+  struct pair { int a, b; };
+  int pair = 1;
+#+end_src
+
+下面的代码也不会产生冲突：
+
+#+begin_src c
+  struct pair { int a, b; } pair;
+#+end_src
+
+*pair* 既是结构体类型标签也是变量名。
+
+然后，结构体，联合体和枚举的类型标签是共享命名空间的，所以下面的代码会产生冲突：
+
+#+begin_src c
+  struct pair { int a, b; };
+  enum pair { c, d };
+#+end_src
+
+下面的也会：
+
+#+begin_src c
+  struct pair { int a, b; };
+  struct pair { int c, d; };
+#+end_src
+
+当代码在一个块中定义一个类型标签那么其作用范围将被限制在这个块中(如同局部变量)。两处相同的类型标签定义并不会产生冲突因为它们处在不同的作用域；
+相反的它们在自己的作用域中都是合法的。例如：
+
+#+begin_src c
+  struct pair { int a, b; };
+
+  void
+  pair_up_doubles (int len, double array[])
+  {
+    struct pair { double a, b; };
+    …
+      }
+#+end_src
+
+两处 *struct pair* 并不冲突。一个只在 *pair_up_doubles* 函数中起作用，在这个函数范围内外部的 *struct pair* 会被屏蔽掉。
+
+如果 *struct pair* 在内部的定义之前出现那么它会引用外部的定义--因为它是在这个地方被看到的唯一定义。因此在下面的代码中：
+
+#+begin_src c
+  struct pair { int a, b; };
+
+  void
+  pair_up_doubles (int len, double array[])
+  {
+    struct two_pairs { struct pair *p, *q; };
+    struct pair { double a, b; };
+    …
+      }
+#+end_src
+
+结构体 *two_pairs* 是指向外部 *struct pair* 类型的指针，这可能并不是希望得到的结构。
+
+你可以通过在函数体内如同定义一个变量一样定义 *struct pair* 类型来避免这种情况。这是一个 /向前引用/ 的类型标签 *pair* ：这样会使
+类型标签在局部生效，并且在之后定义它的细节部分。例如：
+
+#+begin_src c
+  void
+  pair_up_doubles (int len, double array[])
+  {
+    /* Forward declaration for pair.  */
+    struct pair;
+    struct two_pairs { struct pair *p, *q; };
+    /* Give the details.  */
+    struct pair { double a, b; };
+    …
+      }
+#+end_src
+
+然后最明智的做法使避免使用这种影子类型标签。
