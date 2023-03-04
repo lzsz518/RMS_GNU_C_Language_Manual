@@ -34,3 +34,5 @@ Richard Stallman的GNU C 语言手册的中文翻译，原文请见：
 [14 指针](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/14_Pointers.org)
 
 [15 结构体](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/15_Structures.org)
+
+[16 数组](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/16_Arrays.org)
