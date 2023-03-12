@@ -62,4 +62,136 @@ C语言数组中的元素都被存储在没有间隙的连续内存空间中，�
 
 声明 *bstruct* 为一个长度为length元素类型为struct foo的数组。 当数组作用域不是文件范围时，像这样的可变数组大小是允许的。
 
+另一种可以于数组声明相结合的声明方式：
 
+#+begin_src c
+  struct foo *b[length];
+#+end_src
+
+将 *b* 声明为一个长度为 *lenght* 并且指向 *struct foo* 的指针数组。这里的长度不必是一个常量(详见变长数组)。
+
+#+begin_src c
+  double (*c)[5];
+#+end_src
+
+将 *c* 声明为一个长度为5的 *double* 型数组
+
+#+begin_src c
+  char *(*f (int))[5];
+#+end_src
+
+将 *f* 声明为一个接受 *int* 型参数并且返回长度为5的字符串(指向一系列字符的指针)的函数。
+
+#+begin_src c
+  double aa[5][10];
+#+end_src
+
+将 *aa* 声明为一个拥有5个元素并且每一个元素都是一个长度为10的 *double* 型数组的变量。这里展示的是C语言中声明多维数组的方法。
+(详见多维数组)
+
+以上所有声明都指定了数组的长度，其被用来给数组分配存储空间。
+
+* 字符串
+
+在C语言中字符串是指以数值0作为结束符的一系列类型为 *char* 的元素。
+
+计算机程序经常需要使用字符串存储特定的、固定的内容。 *"Take me to you leader!"* 是一个典型的C语言 /字符串常量/  。
+它的数据类型是 char * 。完整的字符串常量句法请参考字符串常量章节。
+
+若需要一个空间存储非常量的字符串请声明一个 *char* 数组。请记得必须申请一个多余的 *char* 来存结束符。例如：
+
+#+begin_src c
+  char text = { 'H', 'e', 'l', 'l', 'o', 0 };
+#+end_src
+
+将 *'text'* 声明为拥有6个元素的数组--5个字符和结束符。不同的方式得到相同的结果：
+
+#+begin_src c
+  char text = "Hello";
+#+end_src
+
+它拷贝了包括了结束符在内的字符串常量的元素。
+
+#+begin_src c
+  char message[200];
+#+end_src
+
+声明一个足以存储199个ASCII字符外加一个结束符的数组。
+
+当你存储一个字符串到 *message* 中请确认或证明其长度不超过数组声明的长度，例如：
+
+#+begin_src c
+  void
+  set_message (char *text)
+  {
+    int i;
+    for (i = 0; i < sizeof (message); i++)
+      {
+        message[i] = text[i];
+        if (text[i] == 0)
+          return;
+      }
+    fatal_error ("Message is too long for `message');
+   }
+#+end_src
+
+使用库函数 *strncpy* 可以更轻松的完成这份工作，它将根据指定的长度连同结束符一起填充整个目标数组。因此如果目标
+字符串最后一个字符不是结束符那么说明字符串的长度不合适。包括GNU C在内的很多系统的库函数都对 *strncpy* 进行过优化
+以使其比显式循环(for-loop)运行的更快。
+
+使用 *strncpy* 的代码类似：
+
+#+begin_src c
+  void
+  set_message (char *text)
+  {
+    strncpy (message, text, sizeof (message));
+    if (message[sizeof (message) - 1] != 0)
+      fatal_error ("Message is too long for `message');
+  }
+#+end_src
+
+更多字符串操作函数相关函数的信息请参考[[https://www.gnu.org/software/libc/manual/html_mono/libc.html#String-and-Array-Utilities][C语言手册]]
+
+你可以通过动态分配空间来避免给你构建或操作的字符串设置固定的长度限制。
+
+* 数组类型指定器
+
+每一个C语言的类型都有类型指定器，你可以通过删除声明中的变量名和分号来实现（参见类型指定符）。数组类型的指定符遵循这一规则，
+但它们可能会显得令人惊讶。
+
+#+begin_src c
+  type   int a[5];           指定器 int [5]
+  type   double a[5][3];     指定器 double [5][3]
+  type   struct foo *a[5];   指定器 struct foo *[5]
+#+end_src
+
+* 不完整数组类型
+
+通常情况下数组相当于一个指向第0个元素的指针。当这是事实时数组的长度便不那么重要。长度仅仅在为数组分配空间时或使用 *sizeof*
+和 *typeof* 时需要(详见自动类型)。因此C语言在某些方面允许：
+
+ * 使用外部声明(extern)来说明一个变量的空间被在其它地方分配。它不需要为该变量分配空间，所以如果它是一个数组，你可以省略其长度。例如：
+
+   #+begin_src c
+     extern int foo[];
+   #+end_src
+
+ * 当函数的参数被声明为数组，那么当实参传递到函数时会以指向数组第0个元素的指针的形式传递。这个值并不说明这个数组到底有多长，
+   没有必要声明它。例如：
+
+   #+begin_src c
+     int
+     func (int foo[]) 
+   #+end_src
+
+这些声明是不完整数组类型的例子，这些类型没有被完全指定。不完整对于访问数组中的元素来说没有什么区别，但是对于其他一些事情来说却很重要。
+例如，在一个不完整的类型上不允许使用sizeof。
+
+对于多维数组，只有第一维可以被省略：
+
+#+begin_src c
+  extern struct chesspiece *funnyboard foo[][8];
+#+end_src
+
+换句话说，代码不需要说有多少行，但必须说明每行有多长。
