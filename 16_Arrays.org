@@ -221,7 +221,70 @@ C语言的表达式中可以含有数组类型，但是数组并不是作为一�
 
 数组变量被声明后它便称为一个左值，或者它是结构体或联合体的一部分时也是左值。当你从元素中构造一个数组时（详见构造数组值），该数组不是一个lvalue。
 
+* 多维数组
+
+严格的说，C语言中的所有数组都是一维的。然而你却可以创建数组的数组，这从某种意义上说相当于多维数组。例如：
+
+#+begin_src c
+  struct chesspiece *board[8][8];
+#+end_src
+
+上面声明了一个拥有8个元素每一个元素拥有8个指向 *struct chesspiece* 的指针的数组。这个数据类型可以呈现国际象棋的状态。要访问其中的一个元素
+需要两个数组索引操作，每一个维度一个索引。例如，你可以写 *board[row][column]* ，假设 *row* 和 *column* 是在合理范围内的整型变量。
+
+C语言是如何理解 *board[row][column]* 的？首先， *board* 将被自动转换为指向0号索引元素的指针。然后将 *row* 的值加到指针地址上，因此，
+*board[row]* 的值是 *board* 的第8个指针。
+
+然而，作为一个数组类型的表达式，它被自动转换为指向数组第一个元素的指针。第二个数组索引操作， *[column]*  被用来访问该数组中选定的元素。
+
+正如下面显式的，指向指针的数组在C语言中是有用处的。你可以像这样声明一个指向棋盘中的行的变量：
+
+#+begin_src c
+  struct chesspiece *(*rowptr)[8];
+#+end_src
+
+这个指针指向一个拥有8个指针的数组 *struct chesspiece* 。你可以像下面这样对它赋值：
+
+#+begin_src c
+  rowptr = &board[5];
+#+end_src
+
+多维数组的每一个维度可以是不同的长度。在这里，我们声明一个名为 *statepop* 的数组，用来保存美国自1900年以来每年的各州人口。
+
+#+begin_src c
+  #define NSTATES 50
+  {
+    int nyears = current_year - 1900 + 1;
+    int statepop[NSTATES][nyears];
+    …
+  }
+#+end_src
+
+变量statepop是一个由NSTATES子数组组成的数组，每个子数组以年份为索引（从1900年开始计算）。因此，为了获得某个州和年份的元素，
+我们必须首先用表示该州的数字对其进行下标，然后用年份的索引进行下标。
+
+#+begin_src c
+  statepop[state][year - 1900]
+#+end_src
+
+多维数组内的子数组在内存中的空间是连续分配的，在每个子数组内，其元素在内存中的空间也是连续分配。处理数组中所有元素的最有效方法是在最内层循环中通过下标遍历数组
+最后一个维度。这种持续访问连续的内存空间的目的是优化处理器缓存的使用。比如说：
+
+#+begin_src c
+  int total = 0;
+  float average;
+
+  for (int state = 0; state < NSTATES, ++state)
+    {
+      for (int year = 0; year < nyears; ++year)
+        {
+          total += statepop[state][year];
+        }
+    }
+
+  average = total / nyears;
+#+end_src
 
 
-
-
+C语言中多维数组的内存布局不同于Fortran语言。在Fortran语言中，多维数组并不是数组的数组而是一个原生的多维数组类型，而且连续访问它的第一个维度是最有效
+的内存访问方式。因此，C语言中50x114数组的内存布局与Fortran中114x50数组的内存布局一致。
