@@ -288,3 +288,93 @@ C语言是如何理解 *board[row][column]* 的？首先， *board* 将被自动
 
 C语言中多维数组的内存布局不同于Fortran语言。在Fortran语言中，多维数组并不是数组的数组而是一个原生的多维数组类型，而且连续访问它的第一个维度是最有效
 的内存访问方式。因此，C语言中50x114数组的内存布局与Fortran中114x50数组的内存布局一致。
+
+* 创建数组的值
+
+可以通过在大括号中写入数值并在大括号之前加上元素类型来创建数组。以这种方式创建数组时并不需要指定数组的长度，因为长度是大括号中元素的数量决定的。
+创建方式如同：
+
+#+begin_src c
+  (elttype[]) { elements };
+#+end_src
+
+下面是一个例子，它构建了一个字符串指针的数组:
+
+#+begin_src c
+  (char *[]) { "x", "y", "z" };
+#+end_src
+
+这实际上等同于用同样的初始化器声明一个数组，例如:
+
+#+begin_src c
+  char *array[] = { "x", "y", "z" };
+#+end_src
+
+之后就可以使用该数组了。
+
+如果所有的元素都是简单的常量表达式，或者是由常量表达式组成的，那么类型与元素值的文字组合可以被强制转换为一个指向第0个元素的指针，并用于初始化文件作用域
+范围内的变量(详见文件作用域)，例如：
+
+#+begin_src c
+  char **foo = (char *[]) { "x", "y", "z" };
+#+end_src
+
+*foo* 的类型是 char**，这是一个指针类型而不是数组类型。该声明等同于定义然后使用一个数组类型的变量：
+
+#+begin_src c
+  char *nameless_array[] = { "x", "y", "z" };
+  char **foo = &nameless_array[0];
+#+end_src
+
+* 变长数组
+
+在GNU C中你可以像声明其它数组一样声明变长数组，它的长度不是一个常量表达式。存储空间在声明时被分配，当程序退出变量所在的代码块时存储空会被回收。例如：
+
+#+begin_src c
+  #include <stdio.h>  /* Defines FILE. */
+  #include <string.h> /* Declares str. */
+
+  FILE *
+  concat_fopen (char *s1, char *s2, char *mode)
+  {
+    char str[strlen (s1) + strlen (s2) + 1];
+    strcpy (str, s1);
+    strcat (str, s2);
+    return fopen (str, mode);
+  }
+#+end_src
+
+(这使用了一些标准库函数；见GNU C库参考手册中 的 [[https://www.gnu.org/software/libc/manual/html_mono/libc.html#String-and-Array-Utilities][字符串和数组实用工具]]）。
+
+当存储空间被分配时，数组的长度被计算一次，并且在数组的范围内被记住，以便在sizeof中使用。
+
+警告：如果变长数组的大小可能非常大（超过100,000），或者在一个递归函数中，不要分配变长数组，因为这很可能导致堆栈溢出。改为动态分配数组。
+
+跳出或脱离数组名称的范围，数组的存储空间就会被回收。不允许跳入作用域；这将得到一个错误信息。
+
+你也可以使用可变长度的数组作为函数的参数：
+
+#+begin_src c
+  struct entry
+  tester (int len, char data[len][len])
+  {
+    …
+  }
+#+end_src
+
+像往常一样，一个用数组类型声明的函数参数实际上是一个指向已经存在的数组的指针。调用函数并不分配数组的存储空间，所以使用这种结构没有特别的堆栈溢出的危险。
+
+要在传递数组之后再传递其长度，额可以在函数的参数列表中使用 /前置声明/ 。 例如：
+
+#+begin_src c
+  struct entry
+  tester (int len; char data[len][len], int len)
+  {
+    …
+  }
+#+end_src
+
+分号前的 *int len* 是一个前置声明的参数，它的作用是在解析数据声明时让人知道 *len* 这个变量。
+
+你可以在参数列表中使用前置声明声明任意数量的参数。它们可以用逗号或分号隔开，但最后一个必须以分号结束，
+分号后面是 "真实"参数声明。每个前置声明必须在参数名称和数据类型上与 "真实"声明相匹配。ISO C11不支持参数前置声明。
