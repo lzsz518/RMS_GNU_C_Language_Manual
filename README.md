@@ -39,4 +39,4 @@ Richard Stallman的GNU C 语言手册的中文翻译，原文请见：
 
 [17 枚举类型](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/17_EnumerationTypes.org)
 
-[16 定义 Typedef 名字](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/18_DefiningTypedefNames.org)
+[18 定义 Typedef 名字](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/18_DefiningTypedefNames.org)
