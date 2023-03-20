@@ -1,0 +1,73 @@
+#+title: 枚举类型
+
+枚举类型的表现形式是一组有限的整数值，每一个整数值都有一个名字。实际上枚举类型等同于一个原生类型。
+
+假设我们有一个存储在整数标量中的情绪状态列表。我们可以用枚举给这些数值命名：
+
+#+begin_src c
+  enum emotion_state { neutral, happy, sad, worried,
+                       calm, nervous };
+#+end_src
+
+(不要介意这种简单化的情绪状态分类方法；这只是一个代码例子）。
+
+枚举里面的名称被称为枚举器。枚举类型将它们定义为常量，它们的值是连续的整数；中性是0，快乐是1，悲伤是2，以此类推。
+另外，你也可以像这样明确指定枚举器的值：
+
+#+begin_src c
+  enum emotion_state { neutral = 2, happy = 5,
+                       sad = 20, worried = 10,
+                       calm = -5, nervous = -300 };
+#+end_src
+
+每个没有指定数值的枚举器的值都将被指定数值0（如果它是第一个没有指定数值的）或下一个连续的整数。
+
+#+begin_src c
+  /* neutral is 0 by default,
+     and worried is 21 by default.  */
+  enum emotion_state { neutral,
+                        happy = 5, sad = 20, worried,
+                        calm = -5, nervous = -300 };
+#+end_src
+
+如果一个枚举器是过时的，你可以通过在枚举器的声明中加入一个属性来指定使用它应该引起警告。下面是 *happy* 与这个属性：
+
+#+begin_src c
+  happy __attribute__
+        ((deprecated
+          ("impossible under plutocratic rule")))
+         = 5,
+#+end_src
+
+详见属性章节。
+
+你可以使用枚举类型声明变量：
+
+#+begin_src c
+  enum emotion_state feelings_now;
+#+end_src
+
+在C语言代码中，这相当于声明变量int。（如果所有的枚举值都是正数，则相当于无符号int）。然而，用枚举类型声明它在调试时有一个好处，
+因为GDB知道它应该用相应的名字来显示变量的当前值。如果变量的类型是int，GDB只能将值显示为一个数字。
+
+*enum* 后面的标识符被称为类型标签，因为它可以区分不同的枚举类型。类型标存在于一个独立的名字空间中，与C语言中的大多数其他名字处于同一个作用域。
+详见类型标签章节。释义：
+
+你可以像结构或联合类型标签一样预先声明一个枚举类型标签，像这样：
+
+#+begin_src c
+  enum foo;
+#+end_src
+
+在你完成定义之前，枚举类型是不完整的。
+
+你可以选择在枚举值列表的末尾加入一个尾部逗号：
+
+#+begin_src c
+  enum emotion_state { neutral, happy, sad, worried,
+                       calm, nervous, };
+#+end_src
+
+这在一些宏定义中是很有用的，因为它使你能够在不知道哪一个是最后一个的情况下组合出枚举器的列表。额外的逗号不会以任何方式改变枚举的含义。
+
+
