@@ -1,0 +1,71 @@
+#+title: 定义 Typedef 名字
+
+你可以定义一个数据类型关键字作为任何类型的别名，然后像内置类型关键字（如int）一样语法上使用该别名。
+你用 *typedef* 来完成这项工作，所以这些别名也被称为 *typedef* 名称。
+
+在 *typedef* 后面跟随文字看起来就像一个变量声明，但它不是声明变量，而是定义了数据类型的关键字。
+
+下面演示如何将 *fooptr* 定义为 struct foo *类型的typedef别名，然后将x和y声明为具有该类型的变量。
+
+#+begin_src c
+  typedef struct foo *fooptr;
+
+  fooptr x, y;
+#+end_src
+
+该声明等同于以下声明：
+
+#+begin_src c
+  struct foo *x, *y;
+#+end_src
+
+你可以为任何类型定义一个 *typedef* 别名。例如，下面将 *frobcount* 定义为 *int* 类型的别名。
+
+#+begin_src c
+  typedef int frobcount;
+#+end_src
+
+这并没有定义一个不同于int的新类型。相反，frobcount是int类型的另一个名字。一旦变量被声明，那么它是被那个名称声明的就没有关系了。
+
+然而，在frobcount和int之间有一个语法上的区别。一个typedef名称不能与signed、unsigned、long或short一起使用，
+它必须自己在typedef定义类型时指定这些类型。所以你不能这样写：
+
+#+begin_src c
+  unsigned frobcount f1;  /* 错误! */
+#+end_src
+
+但是你可以这样写：
+
+#+begin_src c
+  typedef unsigned int unsigned_frobcount;
+
+  unsigned_frobcount f1;
+#+end_src
+
+
+换句话说，一个typedef的名字不是一个关键字的别名，如int。它代表的是一种类型，而这个类型可能是int。
+
+类型定义的名称与函数和变量的命名空间相同，所以你不能对类型定义和函数，或类型定义和变量使用相同的名称。
+当一个类型定义在一个代码块内声明时，它的作用域只在该代码块的范围内。
+
+*警告* 避免定义以'_t'结尾的typedef名称，因为'_t'在标准中拥有其它含义。
+
+你可以将一个类型定义的名称重新定义为与其第一次定义完全相同的类型，但你不能将一个类型定义的名称重新定义为不同的类型，
+即使这两种类型是兼容的。例如，这样做是有效的：
+
+#+begin_src c
+  typedef int frobcount;
+  typedef int frotzcount;
+  typedef frotzcount frobcount;
+  typedef frobcount frotzcount;
+#+end_src
+
+因为每个typedef的名字总是以相同的类型（int）来定义，但下面的定义无效的：
+
+#+begin_src c
+  enum foo {f1, f2, f3};
+  typedef enum foo frobcount;
+  typedef int frobcount;
+#+end_src
+
+尽管enum foo类型与int兼容，但它们并不是同一类型。
