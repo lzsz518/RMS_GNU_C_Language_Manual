@@ -1,0 +1,65 @@
+#+title: 语句
+
+语句指定希望产生的结果所需要的计算；它并不像表达式一样产生一个值。通常情况下语句以一个分号(';')作为结尾，但是块(一条或多条语句组成)是个例外。(详见块章节)
+
+语句将被使用在块中或其它复合语句中。一个复合语句包含一个或两个为嵌套语句的部件。每一个组件必须有且只有一条语句组成。
+在这样的组件中放置多个语句的方法是将它们组合成一个块（详见块章节），这被视为一个语句。
+
+以下章节将讲述多种语句。
+
+* 表达式语句
+
+C语言中最常见的语句是表达式语句。它是一个以分号结尾的表达式。表达式的值在执行后将被丢弃，所以若要使表达式有用则必须让它产生其本身作用之外的作用：
+赋值表达式，自增和自减表达式，函数调用。例如：
+
+#+begin_src c
+  x = 5;              /* Assignment expression. */
+  p++;                /* Increment expression. */
+  printf ("Done\n");  /* Function call expression. */
+  *p;                 /* Cause SIGSEGV signal if p is null. */
+  x + y;              /* Useless statement without effect. */
+#+end_src
+
+在非常不寻常的情况下，我们使用一个表达式语句，其目的是在地址无效的情况下获得一个错误：
+
+#+begin_src c
+  volatile char *p;
+  …
+  *p;                 /* Cause signal if p is null. */
+#+end_src
+
+如果变量 *p* 没有被声明为volatile，编译器可能会优化掉内存访问，因为它知道这个值并没有被真正使用。详见volatile。
+
+* if 语句
+
+*if* 语句通过计算一个表达式来决定是否执行后续的语句，例如：
+
+#+begin_src c
+  if (condition)
+    execute-if-true
+#+end_src
+
+首先将计算 /condition/ 的值，如果值为真(非0)那么将执行语句 /execute-if-true/ 。如果值为假(0)，那么将不会执行 /execute-if-true/，
+以什么都不做作为替代。
+
+这是一个复合语句因为它包含 /if-true-substatement/ 这样的嵌套语句。它必须有且只有一条语句。
+把多个语句放在那里的方法是把它们组合成一个块（详见块章节）。
+
+* if-else 语句
+
+*if-else* 语句通过计算一个表达式来决定下面两个嵌套语句中的哪一个将被执行。例如：
+
+#+begin_src c
+  if (condition)
+    if-true-substatement
+  else
+    if-false-substatement
+#+end_src
+
+
+首先将计算 /condition/ 的值，如果值为真(非0)那么将执行语句 /if-true-substatement/ 。如果值为假(0)，那么将执行 /if-false-substatement/
+作为替代。
+
+
+这是一个复合语句因为它包含 /if-true-substatement/ 和 /if-else-substatement/ 这样的嵌套语句。它必须有且只有一条语句。
+把多个语句放在那里的方法是把它们组合成一个块（详见块章节）。
