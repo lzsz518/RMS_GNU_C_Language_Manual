@@ -63,3 +63,330 @@ C语言中最常见的语句是表达式语句。它是一个以分号结尾的�
 
 这是一个复合语句因为它包含 /if-true-substatement/ 和 /if-else-substatement/ 这样的嵌套语句。它必须有且只有一条语句。
 把多个语句放在那里的方法是把它们组合成一个块（详见块章节）。
+
+* 块
+
+块是一种包含多条各种语句的结构。它以'{'开始'}'结束，并在其中存在一系列语句和声明。块的另一个名称是 /复合语句/ 。
+
+块是语句吗？ 是也不是。它看起来并不像普通的语句，它并不以分号作为结尾。但是你可以像使用语句一样使用它；在任何需要或允许声明的地方，
+你都可以写一个块，并将该块视为一个声明。
+
+到目前为止，似乎区块是一种具有特殊语法的语句。但这样说不完全正确：函数体也是块，并且绝对不是语句。函数头后面的文字不作为语句处理；
+函数值允许拥有一个函数体，多余的都没有意义。
+
+在形式化的语法中，我们将不得不选择--要么一个块是一种声明，要么不是。但这本手册是为人类编写的，而不是为分析器生成器编写的。对人类来说，
+最清楚的答案是："在某些方面，块是一种声明"。
+
+一个不是函数体的块被称为内部块或嵌套块。你可以把一个嵌套块直接放在另一个块里面，但更多的时候，嵌套块是在一些复杂的语句里面，如for语句或if语句。
+
+C语言中的嵌套块有两种用途：
+
+ * 指定局部声明的范围。例如，一个局部变量的作用域的范围只存在于所有包含它的块中最内层的块。
+
+ * 编写一系列的语句，从语法上讲，它们在被调用时被视为一条语句。例如，一个if语句的execute-if-true就是一个语句。要把多个语句放在那里，
+   必须用一个块来包装，像这样：
+
+   #+begin_src c
+     if (x < 0)
+       {
+         printf ("x was negative\n");
+         x = -x;
+       }
+   #+end_src
+
+下面的例子（从头开始循环）显示了一个嵌套块，它有两个目的：它在while语句的主体中包含了两个语句（加上一个声明），并且为 *q* 的声明提供了范围。
+
+#+begin_src c
+  void
+  free_intlist (struct intlistlink *p)
+  {
+    while (p)
+      {
+        struct intlistlink *q = p;
+        p = p->next;
+        free (q);
+      }
+  }
+#+end_src
+
+* return 语句
+
+*return* 语句使包含其的函数立即结束执行。它有两中形式，这里是一种没有返回值的形势：
+
+#+begin_src c
+  return;
+#+end_src
+
+这种形式是为返回类型为void的函数准备的（见 "Void类型"）。你也可以在一个返回非void数据的函数中使用它，但这是一个坏主意，因为它使函数返回垃圾值。
+
+下面是有用返回值的形式：
+
+#+begin_src c
+  return value;
+#+end_src
+
+计算表达式的值并使函数返回该值。如果有必要，该值会进行类型转换，变成函数声明的返回值类型，这就像把该值分配给一个该类型的变量一样。
+
+* 循环语句
+
+当你需要重复执行一系列的语句时，你可以使用循环语句对它们进行迭代。C语言提供了几种不同类型的循环语句，它们将在下面的小节中进行了描述。
+
+因为每种循环语句都包含一个组件所以它们都是复合语句，这个组件通常被称为循环体，它是一个嵌套语句。循环体通常是一个代码块。
+
+** while 语句
+
+while 语句是简单的循环结构，它看起来就像：
+
+#+begin_src c
+  while (test)
+    body
+#+end_src
+
+在这里，循环体是一个语句（通常是一个嵌套代码块），需要重复执行，而test是控制是否再次重复执行循环体的测试表达式。循环的每次迭代都会先计算test，
+如果test为真（非0），则表示循环应该再次执行循环体，如此往复。
+
+以下是一个示例，它可以通过"next"字段遍历以其链接在一起的一系列结构体直到其中最有一个结构体：
+
+#+begin_src c
+  #include <stddef.h> /* Defines NULL. */
+  …
+  while (chain->next != NULL)
+    chain = chain->next;
+#+end_src
+
+这段代码假定链表起始时不为空；如果链表为空（即，如果chain是一个空指针），则该代码会在尝试引用空指针时得到SIGSEGV信号（详见信号）。
+
+** do-while 语句
+
+do-while语句是一种简单的循环结构，它在每次迭代结束时执行test。
+
+#+begin_src c
+  do
+    body
+  while (test);
+#+end_src 
+在这里，body是一个语句（可能是一个代码块），需要重复执行，而test是控制是否再次重复执行循环体的表达式。
+
+循环的每次迭代都会先执行循环体，然后计算test，如果test为真(非0)，则返回并重新开始执行循环体。如果test为假(0)，
+则循环停止重复执行，程序继续向下执行。
+
+** break 语句
+
+*break* 语句的形式为 *'break;'* ，它的作用是立即退出最内层的循环结构或switch语句(详见switch语句)。
+
+例如，下面这个循环会将p向前推进，直到下一个空字符或换行符：
+
+#+begin_src c
+  while (*p)
+    {
+      /* End loop if we have reached a newline.  */
+      if (*p == '\n')
+        break;
+      p++
+    }
+#+end_src
+
+当有嵌套循环时，break语句从包含它的最内层循环退出。
+
+#+begin_src c
+  struct list_if_tuples
+  {
+    struct list_if_tuples next;
+    int length;
+    data *contents;
+  };
+
+  void
+  process_all_elements (struct list_if_tuples *list)
+  {
+    while (list)
+      {
+        /* Process all the elements in this node’s vector,
+           stopping when we reach one that is null.  */
+        for (i = 0; i < list->length; i++
+          {
+            /* Null element terminates this node’s vector.  */
+            if (list->contents[i] == NULL)
+              /* Exit the for loop.  */
+              break;
+            /* Operate on the next element.  */
+            process_element (list->contents[i]);
+          }
+
+        list = list->next;
+      }
+  }
+#+end_src 
+
+在C语言中直接退出最外层循环的方式是使用 *goto* 语句 (详见goto语句)
+
+
+** for 语句
+
+for语句使用三个写在括号内的表达式来定义循环如何进行。第一个表达式为循环启动做准备。第二个表达式用来在每次迭代前测试是否继续循环。
+第三个表达式是在一个迭代结束时，为下一个迭代进行准备。总的来说，它看起来像这样：
+
+#+begin_src c
+  for (start; continue-test; advance)
+    body
+#+end_src
+
+*for* 语句做的第一件事是计算 *start* 。接下来它做的事情是计算表达式 *continue-test* ，如果这个表达式是假的(0)， *for* 语句立即结束，
+所以 *body* 只被执行了零次。
+
+然而，如果 *continue-test* 为真(非0)， *for* 语句会执行 *body* ，然后计算 *advance* 。然后，它又循环到 *not-quite-top* (循环开始处)，
+再次测试 *continue-test* 。但并不会再次计算start。
+
+
+** for 语句的例子
+
+下面是迭代式 *Fibonacci* 函数中的for语句：
+
+#+begin_src c
+  int i;
+  for (i = 1; i < n; ++i)
+    /* If n is 1 or less, the loop runs zero times,  */
+    /* since i < n is false the first time.  */
+    {
+      /* Now last is fib (i)
+         and prev is fib (i - 1).  */
+      /* Compute fib (i + 1).  */
+      int next = prev + last;
+      /* Shift the values down.  */
+      prev = last;
+      last = next;
+      /* Now last is fib (i + 1)
+         and prev is fib (i).
+         But that won’t stay true for long,
+         because we are about to increment i.  */
+    }
+#+end_src
+
+
+在这个例子中， *start* 是 *i = 1* ，意思是把 *i* 设为1。 *continue-test* 是 *i < n* ，意思是只要 *i* 小于 *n* ，就一直重复循环。
+ *advance* 是 *i++* ，意思是把 *i* 增加1。函数体是一个块，包含一个声明和两个语句。
+
+** for 表达式的省略
+
+一个完整的 *for* 语句包含所有这些部分：
+
+#+begin_src c
+  for (start; continue-test; advance)
+    body
+#+end_src
+
+但你可以省略括号内的三个表达式中的任何一个。小括号和两个分号在语法上是必须的，但它们之间的表达式可以缺失。
+缺少表达式意味着这个循环没有使用for语句的那个特定功能。
+
+你可以不使用start，而是在for语句之前做循环准备：效果是一样的。所以我们可以这样写前面例子的开头：
+
+#+begin_src c
+  int i = 0;
+  for (; i < n; ++i)
+#+end_src
+
+或者这样：
+
+#+begin_src c
+  int i;
+  for (i = 0; i < n; ++i)
+#+end_src 
+
+省略continue-test表示循环将一直运行（或直到其他某些原因导致其退出）。循环内的语句可以测试终止条件，并使用“break;”语句退出。
+这种做法更加灵活，因为您可以在循环的任何位置放置这些测试条件，而不仅仅是在循环的开头。
+
+将表达式放在 /advance/ 的地方与将其写在循环体的最后是等价的。唯一的区别是对于continue语句（详见continue语句）。因此，我们也可以这样编写：
+
+#+begin_src c
+  for (i = 0; i < n;)
+    {
+      …
+      ++i;
+    }
+#+end_src
+
+或者这样：
+
+#+begin_src c
+  for (i = 0; i < n; ++i)
+    {
+      …
+    }
+#+end_src 
+
+选择何种方式的主要意义是那种对于程序员来说更可读。然而，在语法上也有区别： advance是一个表达式，不是一个语句。它不能包括循环、块、声明等。
+
+** for-索引声明
+
+你可以在for-loop的开始部分直接声明循环索引变量，像这样：
+
+#+begin_src c
+  for (int i = 0; i < n; ++i)
+    {
+      …
+    }
+#+end_src
+
+上面的 /start/ 只有一个声明；你可以声明一个或多个变量，请使用逗号分隔它们，并且确保它们都是同一种基本类型( 在这个例子中是 *int* )：
+
+#+begin_src c
+  for (int i = 0, j = 1, *p = NULL; i < n; ++i, ++j, ++p)
+    {
+      …
+    }
+#+end_src
+
+这些变量的作用域是 *for* 语句的范围。关于基本类型的解释详见基本类型整洁。
+
+在 *for* 语句中声明的变量应该有初始化器。省略初始化会给变量带来不可预知的初始值，所以这段代码是错误的。
+
+#+begin_src c
+  for (int i; i < n; ++i)
+    {
+      …
+    }
+#+end_src
+
+** continue 语句
+
+*continue* 语句看起来像 *'continue;'* ，其作用是立即跳到最内层循环结构的末端。如果它是一个 *for-loop* ，
+接下来发生的事情就是执行循环的 /advance/ 表达式。
+
+例如，这个循环增加p直到下一个空字符或换行，并且（以某种未显示的方式）对行中的所有字符进行操作，除了空格。它对空格的操作是跳过它们。
+
+#+begin_src c
+  for (;*p; ++p)
+    {
+      /* End loop if we have reached a newline.  */
+      if (*p == '\n')
+        break;
+      /* Pay no attention to spaces.  */
+      if (*p == ' ')
+        continue;
+      /* Operate on the next character.  */
+      …
+    }
+#+end_src
+
+执行'continue;'会跳过循环主体，但不会跳过 /advance/ 表达式p++。
+
+我们也可以这样写：
+
+#+begin_src c
+  for (;*p; ++p)
+    {
+      /* Exit if we have reached a newline.  */
+      if (*p == '\n')
+        break;
+      /* Pay no attention to spaces.  */
+      if (*p != ' ')
+        {
+          /* Operate on the next character.  */
+          …
+        }
+    }
+#+end_src
+
+使用 *continue* 的好处是可以减少嵌套的深度。
+
+对比 *continue* 与 *break* 。详见break 语句章节
