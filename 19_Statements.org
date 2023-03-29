@@ -546,3 +546,43 @@ case 看起来就像：
       }
   }
 #+end_src
+
+** Case 范围
+
+你可以给一个 *case* 标签指定一个连续的数值范围，例如：
+
+#+begin_src c
+  case low ... high:
+#+end_src
+
+这与适当数量的单个 *case* 标签具有相同的效果，从低到高，每个整数值都有一个标签，包括起始值。
+
+这个功能对 *case* 中使用ASCII编码范围内的值非常有用：
+
+#+begin_src c
+  case 'A' ... 'Z':
+#+end_src
+
+*小心* ： 使用整数时，在...周围写上空格，以防止它被错误解析。像这样：
+
+#+begin_src c
+  case 1 ... 5:
+#+end_src
+
+而不是这样：
+
+#+begin_src c
+  case 1...5:
+#+end_src
+
+** Null 语句
+
+/null/ 语句就是一个分号，他什么也不做。
+
+空语句是一个占位符，用于在语法上需要一个语句，但没有什么要做的情况下使用。例如，有时for-loop的所有工作都是在 *for-header* 本身完成的，
+没有给 *body* 留下任何工作。下面是一个搜索数组中第一个换行的例子：
+
+#+begin_src c
+  for (p = array; *p != '\n'; p++)
+    ;
+#+end_src
