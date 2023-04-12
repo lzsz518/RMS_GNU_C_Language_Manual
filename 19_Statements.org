@@ -586,3 +586,121 @@ case 看起来就像：
   for (p = array; *p != '\n'; p++)
     ;
 #+end_src
+
+* goto 语句与 Labels
+
+*goto* 语句看起来像这样：
+
+#+begin_src c
+  goto label;
+#+end_src
+
+它的作用是让程序从当前位置即跳转到另外一个位置--另外一个位置由标签(/label/)来定义。
+
+一个普通的标签定义看起来像这样：
+
+#+begin_src c
+  label:
+#+end_src
+
+而且它可以出现在任何语句之前。你不能用 *default* 作为标签，因为它对 *switch* 语句有特殊意义。
+
+一个普通的标签不需要单独的声明，定义它就足够了。
+
+下面是一个使用goto来实现相当于do-while的循环的例子：
+
+#+begin_src c
+  {
+   loop_restart:
+    body
+    if (condition)
+      goto loop_restart;
+  }
+#+end_src
+
+标签的名字空间与变量和函数的名字空间是分开的。因此，变量与标签在同一个作用域内使用同一个名字时不会产生错误的：
+
+#+begin_src c
+  {
+    int foo;    // Variable foo.
+   foo:         // Label foo.
+    body
+    if (foo > 0)  // Variable foo.
+      goto foo;   // Label foo.
+  }
+#+end_src
+
+块的作用域不会对普通标签产生影响；每个标签名称的作用域都会贯穿整个函数。使用 *goto* 跳入一个块看起来很奇快，但确实可以这样做，例如：
+
+#+begin_src c
+  if (x < 0)
+    goto negative;
+  if (y < 0)
+    {
+     negative:
+      printf ("Negative\n");
+      return;
+    }
+#+end_src
+
+如果 *goto* 跳转到一个变量的作用域内并且在它的初始化语句之后那么变量不会被初始化。例如如果 *x* 是负数：
+
+#+begin_src c
+  if (x < 0)
+    goto negative;
+  if (y < 0)
+    {
+      int i = 5;
+     negative:
+      printf ("Negative, and i is %d\n", i);
+      return;
+    }
+#+end_src
+
+上面的代码将会输出随机数值，因为 *int i = 5* 没有被执行。
+
+如果该块声明了一个可变长度的自动数组，跳入它就会产生一个编译错误。然而，跳出变长数组的范围是允许的，并且跳出之后会删除其存储空间。
+
+标签不能直接出现在声明之前，所以代码不能直接跳转到声明之前的标签。例如下面的代码不不被允许的：
+
+#+begin_src c
+  {
+    goto foo;
+  foo:
+    ;
+    int x = 5;
+    bar(&x);
+  }
+#+end_src
+
+变通的办法是在标签之后增加一条语句，甚至是空语句也可以。例如：
+
+#+begin_src c
+  {
+    goto foo;
+  foo:
+    ;
+    int x = 5;
+    bar(&x);
+  }
+#+end_src
+
+同样的，标签不能出现在一个块的末尾。变通的办法是相同的：在标签之后增加一个分号。
+
+这些对于标签的不必要的限制是没有意义的，原则上应该取消；但是它们只造成了很少的不便因为使用标签和goto并不是很好的编程风格，所以它们
+很少出现在代码中。
+
+以上的例子都是人为可以书写的；不适用 *goto* 的方法看起来更加自然，例如打印 "Negative "的例子的简洁写法是这样的：
+
+#+begin_src c
+  if (x < 0 || y < 0)
+    {
+      printf ("Negative\n");
+      return;
+    }
+#+end_src
+
+很难构建一个简单的例子来说明使用 *goto* 是最佳编程风格。它只会在复杂程序中可以起到良好作用，因此不适合用来在这里解释 *goto* 的作用。
+
+使用goto的唯一好时机是它比任何其他替代方案都更简单的时候。很少需要向后跳转，因为通常其他循环和控制结构可以提供更简单的代码。
+使用goto向前跳转更常见，例如当一个函数需要在错误情况下进行一些处理，而错误可能发生在函数的不同位置时。
