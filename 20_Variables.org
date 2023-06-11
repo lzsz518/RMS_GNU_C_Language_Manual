@@ -1,0 +1,123 @@
+#+title: 变量
+
+在C语言程序中只有通过声明才可以让程序知道变量的存在。只有在声明之后，才能使用该变量。在同一作用域内多次声明变量名是错误的；
+但有一个例外，即在变量的暂时定义(定义变量时不初始化)时使用extern关键字可以与同一个变量的另一个声明共存。
+
+变量可以在块或文件的任何位置进行声明。（C语言的早期版本要求在块内的所有变量声明都在任何语句之前发生。）
+
+
+在函数或块内声明的变量是局部变量。这意味着该变量的名称仅在该函数或块的结束之前可用，并且内存空间只在控制流程位于该函数或块内时分配。
+
+在文件的顶层声明的变量称为文件范围变量。它们被分配固定且独立的内存位置，因此在它们的值将在程序的整个执行工程中可用。
+
+* 声明变量
+
+变量声明看起来就像：
+
+#+begin_src c
+  keywords basetype decorated-variable [= init];
+#+end_src
+
+关键字指定了如何处理变量名的作用域和存储分配。大多数声明没有关键字，因为默认设置对它们来说是正确的。
+
+C允许这些关键字出现在基本类型之前、之后，甚至中间，比如unsigned static int，但不要这样做，
+这会让其他程序员感到惊讶。请始终将关键字写在最前面。
+
+基本类型可以是C预定义的任何类型，或者是使用typedef定义的类型关键字。它还可以是结构体标签（struct tag）、
+联合体标签（union tag）或枚举标签（enum tag）。此外，它还可以包含类型限定符，如const和volatile（参见类型限定符）。
+
+在普通情况下，声明变量时只使用基本类型修饰变量名，例如：
+
+#+begin_src c
+  int foo;
+#+end_src
+
+使用int作为基本类型，foo作为修饰过的变量。这将声明类型为int的变量foo。
+
+#+begin_src c
+  struct tree_node foo;
+#+end_src
+
+声明类型为struct tree_node的变量foo。
+
+** 声明数组与指针
+
+要声明数组变量，使用variable[length]来修饰变量名：
+
+#+begin_src c
+  int foo[5];
+#+end_src
+
+要声明指针变量，使用*variable来修饰变量名：
+
+#+begin_src c
+  struct list_elt *foo
+#+end_src
+
+这些结构可以嵌套，例如：
+
+#+begin_src c
+  int foo[3][5];
+#+end_src
+
+声明foo为有用三个数组每个数组有5个整型元素的数组：
+
+#+begin_src c
+  struct list_elt *foo[5];
+#+end_src
+
+声明foo为拥有5个结构体类型元素的指针数组，和
+
+#+begin_src c
+  struct list_elt **foo;
+#+end_src
+
+声明foo为指向结构体的指针的指针。
+
+#+begin_src c
+  int **(*foo[30])(int, double);
+#+end_src
+
+声明foo为一个包含30个指向函数的指针的数组（参见函数指针），每个函数都必须接受两个参数（一个int和一个double），并返回类型为int**。
+
+#+begin_src c
+  void
+  bar (int size)
+  {
+    int foo[size];
+    …
+      }
+#+end_src
+
+在函数bar被调用时，声明foo为一个大小在运行时指定的整数数组。
+
+** 合并变量声明
+
+当多个声明具有相同的关键字和基本类型时，可以使用逗号将它们组合在一起。因此，
+
+#+begin_src c
+  keywords basetype
+    decorated-variable-1 [= init1],
+    decorated-variable-2 [= init2];
+#+end_src
+
+相当于
+
+#+begin_src c
+  keywords basetype
+     decorated-variable-1 [= init1];
+  keywords basetype
+     decorated-variable-2 [= init2];
+#+end_src
+
+一些简单的例子：
+
+#+begin_src c
+  int a, b;
+  int a = 1, b = 2;
+  int a, *p, array[5];
+  int a = 0, *p = &a, array[5] = {1, 2};
+#+end_src
+
+在最后两个例子中，a是一个int，p是一个指向int的指针，array是一个包含5个int的数组。
+由于数组的初始化器只指定了两个元素，其他三个元素将被初始化为零。
