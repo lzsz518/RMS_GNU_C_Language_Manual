@@ -1,0 +1,223 @@
+#+title: 类型限定符
+
+声明可以包含类型限定符，用于向编译器提供关于变量使用方式的建议。有三个不同的限定符，
+分别是 *const* 、 *volatile* 和 *restrict* 。
+它们涉及不同的问题，因此可以同时使用多个限定符。例如，const volatile描述的是程序不允许更改的值，
+但每次程序检查该值时可能具有不同的值（例如特殊的硬件寄存器或共享内存的一部分）。
+
+如果你只是学习C语言那么可以跳过这一章。
+
+* const 变量和字段
+
+您可以通过在声明前面写上const来将变量标记为“常量”。这表示任何对该变量的赋值将被视为错误。
+它还可能允许一些编译器优化，例如只需获取该值一次以满足对它的多个引用。具体写法如下：
+
+#+begin_src c
+  const double pi = 3.14159;
+#+end_src
+
+在这个定义之后，代码可以使用变量 *pi* ，但不能给它赋予不同的值。
+
+#+begin_src c
+  pi = 3.0 /* Error! */
+#+end_src
+
+被声明为常量的简单变量可以用于与枚举常量相同的目的，并且它们不仅限于整数类型。变量的常量性质也会传播到指针类型。
+
+指针类型可以指定目标对象为常量。例如，指针类型const double *表示指向常量double的指针。这是通过对pi取地址得到的类型。
+这样的指针不能在赋值语句的左侧进行解引用操作。
+
+#+begin_src c
+  *(&pi) = 3.0 /* Error! */
+#+end_src
+
+非常量指针可以自动转换为常量指针，但反之不成立。例如:
+
+#+begin_src c
+  const double *cptr;
+  double *ptr;
+
+  cptr = &pi;    /* Valid. */
+  cptr = ptr;    /* Valid. */
+  ptr = cptr;    /* Error! */
+  ptr = &pi;     /* Error! */
+#+end_src
+
+这并不能完全防止修改值的行为。您始终可以将常量指针强制转换为非常量指针类型：
+
+#+begin_src c
+  ptr = (double *)cptr;    /* Valid. */
+  ptr = (double *)&pi;     /* Valid. */
+#+end_src
+
+然而， *const* 提供了一种方法来表明某个函数不会修改通过地址传递给它的数据结构，例如：
+
+#+begin_src c
+  int
+  string_length (const char *string)
+  {
+    int count = 0;
+    while (*string++)
+      count++;
+    return count;
+  }
+#+end_src
+
+使用const char *作为参数是一种表明该函数永远不会修改字符串本身所在内存的方式。
+
+在调用string_length函数时，您可以传递一个普通的char *参数，因为它可以自动转换为const char *。
+
+* volatile 变量于字段
+
+GNU C编译器通常会对程序进行优化以消除对变量的写入或读取的需要。例如，
+
+#+begin_src c
+  int foo;
+  foo = 1;
+  foo++;
+#+end_src
+
+在某些情况下，编译器可能会直接将值2存储到foo中，而不需要存储1。这些优化也可以应用于结构体字段。
+
+如果包含foo的内存与另一个程序共享，或者它被硬件异步地检查，这样的优化可能会导致通信混乱。
+使用 *volatile* 是一种防止这种情况发生的方法。
+
+声明变量或字段时在类型前使用 *volatile* 关键字，表示该值可能在任何时候由于程序控制之外的原因被检查或改变。
+因此，程序必须以谨慎的方式执行，以确保与这些访问的正确交互，无论何时它们发生，这种情况会时常发生。
+
+一个简单的例子：
+
+#+begin_src c
+  volatile int lock;
+#+end_src
+
+这指示编译器不对变量lock的使用进行某些常见的优化。对于volatile变量或字段的所有读写操作都是真实进行的，
+并按照源代码指定的顺序进行。因此，以下代码：
+
+#+begin_src c
+  lock = 1;
+  list = list->next;
+  if (lock)
+    lock_broken (&lock);
+  lock = 0;
+#+end_src
+
+真正将值1存储在lock中，即使没有迹象表明它确实被使用，if语句也会读取和检查lock的值，而不是假设它仍为1。
+
+原则上，可以对volatile变量和字段进行有限的优化：在两个序列点之间的多次引用可以一起简化。(参见序列点)
+
+使用volatile并不消除大多数运算符的操作数计算顺序的灵活性。例如，在lock + foo()中，
+访问lock和调用foo的顺序未指定，因此它们可以以任何顺序执行；lock是volatile的事实对此没有影响。
+
+* restrict-限定指针
+
+您可以使用restrict类型限定符将指针声明为“受限制的”，例如：
+
+#+begin_src c
+  int *restrict p = x;
+#+end_src
+
+这样可以更好地优化使用该指针的代码。
+
+如果使用restrict声明了指针p，并且代码引用了p所指向的对象（使用*p或p[i]），
+*restrict* 声明保证了代码不会以其他方式访问该对象，只能通过p来访问。
+
+例如，这意味着代码不能使用另一个指针来访问相同的内存空间，如下所示：
+
+#+begin_src c
+  int *restrict p = whatever;
+  int *q = p;
+  foo (*p, *q);
+#+end_src
+
+通过 *q* 绕过 *p* 访问其所指向的对象违反了 *restrict* 的限制，代码也不能这样写：
+
+#+begin_src c
+  int *restrict p = whatever;
+  struct { int *a, *b; } s;
+  s.a = p;
+  foo (*p, *s.a);
+#+end_src
+
+这个示例使用结构体字段而不是变量 *q* 来保存另一个指针，但它仍然违反了restrict的限制。
+
+关键字restrict还限制 *p* 不会指向任何自动变量或静态变量的分配空间。因此，代码不能这样做：
+
+#+begin_src c
+  int a;
+  int *restrict p = &a;
+  foo (*p, a);
+#+end_src
+
+这是因为代码直接访问了 *p* 指向的对象 (*a*)，绕过了 *p* 。
+
+如果代码使用restrict关键字做出了限制，当违反了这些限制，执行结果将是不可预测的。
+
+* restrict 指针示例
+
+以下是使用 *restrict* 关键字进行真正优化的示例：
+
+在这个例子中， *restrict* 关键字向 *GCC* 保证了数组 *out* 所指向的内存区域与数组 *in* 所指向的内存区域不重叠。
+
+#+begin_src c
+  void
+  process_data (const char *in,
+                char * restrict out,
+                size_t size)
+  {
+    for (i = 0; i < size; i++)
+      out[i] = in[i] + in[i + 1];
+  }
+#+end_src
+
+这是一个简单的树结构，每个树节点包含了一个PAYLOAD类型的数据以及两个子树。
+
+#+begin_src c
+  struct foo
+    {
+      PAYLOAD payload;
+      struct foo *left;
+      struct foo *right;
+    };
+#+end_src
+
+现在有一个函数用于将左子树中的两个指针设置为null。
+
+#+begin_src c
+  void
+  null_left (struct foo *a)
+  {
+    a->left->left = NULL;
+    a->left->right = NULL;
+  }
+#+end_src
+
+由于*a和*a->left具有相同的数据类型，它们可能合法地别名（参见别名）。
+因此，在执行第二个赋值语句时， *null_left* 的编译代码必须从内存中重新读取 *a->left* 。
+
+我们可以通过以不太明显的方式编写 *null_left* 函数来启用优化，从而避免再次读取 *a->left* 。
+
+#+begin_src c
+  void
+  null_left (struct foo *a)
+  {
+    struct foo *b = a->left;
+    b->left = NULL;
+    b->right = NULL;
+  }
+#+end_src
+
+使用 *restrict* 修饰符可以更加优雅地解决这个问题。
+
+#+begin_src c
+  void
+  null_left (struct foo *restrict a)
+  {
+    a->left->left = NULL;
+    a->left->right = NULL;
+  }
+#+end_src
+
+通过将 *a* 声明为 *restrict* ，我们断言其他指针,如 *a->left* 不会指向与 *a* 相同的内存空间。
+因此， *a->left->left* 的内存位置不能与 *a->left* 相同。在知道这一点的情况下，
+编译后的代码可以避免在第二个语句中重新加载 *a->left* 。
