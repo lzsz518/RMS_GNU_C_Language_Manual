@@ -46,3 +46,6 @@ Richard Stallman的GNU C 语言手册的中文翻译，原文请见：
 [20 变量](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/20_Variables.org)
 
 [21 类型限定符](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/21_TypeQualifiers.org)
+
+[22 函数定义](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/22_FunctionDefinitions.org)
+
