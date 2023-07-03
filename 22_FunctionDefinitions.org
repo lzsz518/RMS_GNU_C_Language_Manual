@@ -166,3 +166,138 @@ static。这样可以确保调用不会在其他模块中添加。如果程序�
 #+end_src
 
 以上函数定义是等价的。
+
+*** 解析数组参数
+
+函数调用时指针的值被传递给函数，就像C语言中的所有参数值一样。然而，结果是矛盾的，因为数组本身是按引用传递的：
+它的内容被视为共享内存——在调用者和被调用函数之间共享。当clobber4给数组的第4个元素赋值时，效果就是修改了调用中指定的数组的第4个元素。
+
+#+begin_src c
+#include <stddef.h>  /* Defines NULL. */
+#include <stdlib.h>  /* Declares malloc, */
+                     /* Defines EXIT_SUCCESS. */
+
+int
+main (void)
+{
+  int data[] = {1, 2, 3, 4, 5, 6};
+  int i;
+
+  /* Show the initial value of element 4. */
+  for (i = 0; i < 6; i++)
+    printf ("data[%d] = %d\n", i, data[i]);
+
+  printf ("\n");
+
+  clobber4 (data);
+
+  /* Show that element 4 has been changed. */
+  for (i = 0; i < 6; i++)
+    printf ("data[%d] = %d\n", i, data[i]);
+
+  printf ("\n");
+
+  return EXIT_SUCCESS;
+}
+#+end_src
+
+上面的程序将会显示'0'因为调用clobber4之后data[4]的值被改写为0。
+
+数组data有6个元素，但将其传递给参数类型写为int[20]的函数不会报错，因为它实际上代表的是int*。真正的参数指针并没有携带指向的数组长
+度的指示。它也不需要指向数组的开头。例如，
+
+#+begin_src c
+clobber4 (data+1);
+#+end_src
+
+传递的是一个从data的第1个元素开始的“数组”，其效果是将data[5]清零，而不是data[4]。
+
+如果所有对该函数的调用都将提供一个特定大小的数组，您可以将数组的大小指定为静态大小：
+
+#+begin_src c
+void
+clobber4 (int array[static 20])
+…
+#+end_src
+
+将对编译器作出始终以一个包含20个元素的数组作为函数调用时的参数的承诺，这有助于编译器可以优化代码。如果代码违反了这个承诺，并且以一个较短的数组调用该函数，可能会发生不可预测的情况。
+
+*** 在数组参数上使用类型限定符
+
+您可以对数组参数中使用类型限定符const、restrict和volatile，例如：
+
+#+begin_src c
+void
+clobber4 (volatile int array[20])
+…
+#+end_src
+
+表示array等同于一个指向volatile int的指针。或者：
+
+#+begin_src c
+void
+clobber4 (int array[const 20])
+…
+#+end_src
+
+
+将数组参数等同于一个指向int的常量指针。如果我们希望clobber4函数成功执行，将以下参数声明是没有意义的：
+
+#+begin_src c
+void
+clobber4 (const int array[20])
+…
+#+end_src
+
+这样的写法会告诉编译器参数应该指向一个包含常量int值的数组，那么我们将无法在函数中对array进行赋值。
+
+在具有多个数组参数的函数中，您可以使用restrict关键字告诉编译器每个传入的数组参数都是不同的：
+
+#+begin_src c
+void
+foo (int array1[restrict 10], int array2[restrict 10])
+…
+#+end_src
+
+使用restrict关键字向编译器承诺函数调用者不会将同一个数组传递给多个restrict数组参数。了解这一点使得编译器能够进行更好的代码优化。这与使用restrict指针具有相同的效果（参见restrict指针），但在阅读代码时明确表示期望一个特定大小的数组。
+
+** 接受结构体参数的函数
+
+在GNUC中，结构体是原生对象，因此可以以自然的方式将它们用作函数参数和参数。下面是一个名为swapfoo的函数，它接受一个具有两个字段的结构体foo作为参数，并返回一个具有相同类型但字段交换的结构体。
+
+#+begin_src c
+struct foo { int a, b; };
+
+struct foo x;
+
+struct foo
+swapfoo (struct foo inval)
+{
+  struct foo outval;
+  outval.a = inval.b;
+  outval.b = inval.a;
+  return outval;
+}
+#+end_src
+
+这种更简单的swapfoo定义避免了使用一个局部变量来保存即将返回的结果，而是使用结构体构造函数（参见结构体构造函数）来实现，如下所示：
+
+#+begin_src c
+struct foo
+swapfoo (struct foo inval)
+{
+  return (struct foo) { inval.b, inval.a };
+}
+#+end_src
+
+在函数的参数列表中定义结构体类型是有效的，就像下面的例子一样：
+
+#+begin_src c
+int
+frob_bar (struct bar { int a, b; } inval)
+{
+  body
+}
+#+end_src
+
+函数体body可以访问inval的字段，因为整个函数体都定义了结构体类型struct bar。然而，除非通过一些不正规的手段，否则无法创建一个struct  bar参数来传递给frob_bar函数。因此，在实际中，在参数列表中定义结构体类型是没有用的。
