@@ -301,3 +301,106 @@ frob_bar (struct bar { int a, b; } inval)
 #+end_src
 
 函数体body可以访问inval的字段，因为整个函数体都定义了结构体类型struct bar。然而，除非通过一些不正规的手段，否则无法创建一个struct  bar参数来传递给frob_bar函数。因此，在实际中，在参数列表中定义结构体类型是没有用的。
+
+* 函数声明
+
+要调用一个函数或者将其名称作为指针必须在其之前对函数名进行 /声明/ 。函数的定义同时也为其所在作用域的其余部分声明了该函数的名称，但是如果你想在函数定义之前调用该函或者从其他编译模块调用它那么必须先进行单独的函数声明。
+
+函数声明看起来像函数定义的开始。它以返回值类型（如果没有，则为void）和函数名开头，后面跟着括号中的参数声明（尽管有时可以省略这些参数声明）。但相似之处就到此为止了：声明部分不包含函数体，而是使用分号结束。
+
+指定参数类型的声明称为函数原型（function prototype）。您可以包含参数名称，也可以省略它们。如果在声明中包含参数名称，它们不会起到任何作用，但可以作为文档说明。
+
+这种形式的原型指定了固定的参数类型：
+
+#+begin_src c
+rettype function (argtypes…);
+#+end_src
+
+这种形式表示函数不接受任何参数：
+
+#+begin_src c
+rettype function (void);
+#+end_src
+
+这种形式为某些参数声明了类型，并允许使用未指定类型的额外参数：
+
+#+begin_src c
+rettype function (argtypes…, ...);
+#+end_src
+
+对于长度可变的数组参数，您可以在数组通常应该放置“长度”的位置上使用 '*' 来编写它的声明；例如，以下声明是等价的。
+
+#+begin_src c
+double maximum (int n, int m, double a[n][m]);
+double maximum (int n, int m, double a[*][*]);
+double maximum (int n, int m, double a[ ][*]);
+double maximum (int n, int m, double a[ ][m]);
+#+end_src
+
+旧式的声明形式，不是一个原型，它不指定参数的类型或数量：
+
+*警告：* 传递给没有原型声明的函数的参数将使用默认参数提升进行转换（参见参数提升）。同样，对于类型未指定的额外参数也是如此
+
+函数声明通常写在源文件的顶层，但您也可以将它们放在代码块内部。这样，函数名在包含范围的其余部分都是可见的。例如：
+
+#+begin_src c
+void
+foo (char *file_name)
+{
+  void save_file (char *);
+  save_file (file_name);
+}
+#+end_src
+
+如果代码的其他部分尝试调用save_file函数，那么这个声明在那里将不会生效。因此，该函数将获得隐式声明，形式为extern int save_file ();。这与此处的显式声明冲突，导致差异产生警告。
+
+传统上，C的语法允许在函数声明中省略数据类型，如果该声明指定了存储类或限定符。此时，类型默认为int。例如：
+
+#+begin_src c
+static foo (double x);
+#+end_src
+
+默认将返回类型设定为int。这是不好的实践；如果您看到这种情况，请进行修正。
+
+调用一个未声明的函数将在最内层的包含范围中创建一个隐式声明，相当于以下声明形式：
+
+#+begin_src c
+extern int function ();
+#+end_src
+
+这个声明表示该函数返回int类型，但未指定其参数类型。如果这不准确地描述了函数本身，那么程序需要一个带有参数类型的显式声明才能正确地调用它。
+
+隐式声明已经被弃用，因此创建隐式声明的函数调用会引发警告。
+
+* 函数调用语义
+
+函数调用的含义是计算指定的参数表达式，根据函数的声明将它们的值进行转换，然后运行函数，并将转换后的值的副本传递给函数。（这种参数传递的方法被称为按值调用。）当函数执行完成时，它返回的值将成为函数调用表达式的值。
+
+
+按值调用意味着对函数参数变量的赋值对调用者没有直接影响。例如，
+
+#+begin_src c
+#include <stdlib.h>  /* Defines EXIT_SUCCESS. */
+#include <stdio.h>   /* Declares printf. */
+
+void
+subroutine (int x)
+{
+  x = 5;
+}
+
+void
+main (void)
+{
+  int y = 20;
+  subroutine (y);
+  printf ("y is %d\n", y);
+  return EXIT_SUCCESS;
+}
+#+end_src
+
+打印的结果是 "y is 20"。调用子程序会将 x 初始化为 y 的值，但这不会建立两个变量之间的任何其他关系。因此，在子程序内部对 x 的赋值只会改变该变量 x。
+
+如果函数的声明指定了参数的类型，函数调用将尽可能将参数表达式转换为该类型。如果转换不可能，则会产生错误。
+
+如果函数的声明没有指定该参数的类型，那么将应用默认的参数提升规则。参见参数提升（Argument Promotions）。
