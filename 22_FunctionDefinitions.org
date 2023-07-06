@@ -551,6 +551,560 @@ binary_op (x, 5)
 
 '*'提醒代码阅读者binary_op是一个函数指针，而不是特定函数的名称。
 
+* main 函数
+
+每个完整的可执行程序至少需要一个函数，称为 *main* 函数，这是程序执行的起点。虽然你不必显式声明main函数，
+但GNU C允许你这样做。根据惯例，main函数应该定义为遵循以下调用约定之一：
+
+#+begin_src c
+int main (void) {…}
+int main (int argc, char *argv[]) {…}
+int main (int argc, char *argv[], char *envp[]) {…}
+#+end_src
+
+在参数列表中使用void表示main函数不使用参数。你可以使用char **argv而不是char *argv[]，对于envp也是一样，
+因为这两种写法是等价的。
+
+你可以从C代码中调用main函数，就像调用其他函数一样，尽管这种做法很不常见。
+当你这样做时，你必须编写调用语句来传递与main函数定义中的参数匹配的参数。
+
+实际上，当程序启动时，main函数并不是第一个执行的代码。事实上，第一个执行的代码是来自文件crt0.o的系统代码。
+在Unix系统中，这是手写的汇编代码，但在GNU系统中，我们用C代码替代了它。它的任务是找到main函数的参数并调用它。
+
+** main 函数的返回值
+
+当main函数返回时，进程终止。main函数返回的任何值都成为退出状态，并报告给父进程。
+尽管在名义上返回值的类型是int，但实际上退出状态被截断为8位；如果main函数返回值为256，退出状态为0。
 
 
+通常，程序只返回两个值中的一个：0表示成功，1表示失败。为了最大的可移植性，可以使用在stdlib.h中定义的宏值
+*EXIT_SUCCESS* 和 *EXIT_FAILURE* 。以下是一个示例：
 
+#+begin_src c
+#include <stdlib.h>  /* Defines EXIT_SUCCESS */
+                     /* and EXIT_FAILURE. */
+
+int
+main (void)
+{
+  …
+  if (foo)
+    return EXIT_SUCCESS;
+  else
+    return EXIT_FAILURE;
+}
+#+end_src
+
+某些类型的程序为不同的返回值约定固定的含义；例如，包括cmp和diff在内的比较程序返回1表示不匹配，返回2表示无法执行比较。
+
+** 访问命令行参数
+
+如果程序通过命令行参数被调用，它可以通过main函数的参数argc和argv来访问这些参数。
+（你可以为这些参数取任意名称，但通常使用argc和argv这两个名称。）
+
+参数argv是一个包含所有命令行参数的字符串数组，其中第一个字符串是调用命令的名称。参数argc是一个整数，
+表示argv包含的字符串数量。下面是一个示例，演示如何访问命令行参数，获取程序的名称，并检查标准的--version和--help选项：
+
+#+begin_src c
+#include <string.h> /* Declare strcmp. */
+
+int
+main (int argc, char *argv[])
+{
+  char *program_name = argv[0];
+
+  for (int i = 1; i < argc; i++)
+    {
+      if (!strcmp (argv[i], "--version"))
+        {
+          /* Print version information and exit. */
+          …
+        }
+      else if (!strcmp (argv[i], "--help"))
+        {
+          /* Print help information and exit. */
+          …
+        }
+    }
+  …
+}
+#+end_src
+
+** 访问环境变量
+
+你可以选择在main函数中包含第三个参数，即另一个字符串数组，用于获取程序可用的环境变量。
+与argv不同，这里没有额外的参数来表示环境变量的数量；相反，环境变量数组以空指针结尾。
+
+#+begin_src c
+#include <stdio.h>   /* Declares printf. */
+
+int
+main (int argc, char *argv[], char *envp[])
+{
+  /* Print out all environment variables. */
+  int i = 0;
+  while (envp[i])
+    {
+      printf ("%s\n", envp[i]);
+      i++;
+    }
+}
+#+end_src
+
+另一种检索环境变量的方法是使用在stdlib.h中定义的库函数getenv。使用getenv不需要定义main函数来接受envp指针。
+例如，下面是一个获取并打印用户的主目录（如果定义的话）的程序示例：
+
+#+begin_src c
+#include <stdlib.h>  /* Declares getenv. */
+#include <stdio.h>   /* Declares printf. */
+
+int
+main (void)
+{
+  char *home_directory = getenv ("HOME");
+  if (home_directory)
+    printf ("My home directory is: %s\n", home_directory);
+  else
+    printf ("My home directory is not defined!\n");
+}
+#+end_src
+
+* 高级函数特性
+
+本节介绍了GNU C函数定义的一些高级或晦涩的特性。如果你刚开始学习C语言，可以跳过本章的其余部分。
+
+** 可变长度数组参数
+
+一个数组参数可以具有可变长度：只需使用一个非常数的大小声明数组类型。在嵌套函数中，
+长度可以引用包含范围内定义的变量。在任何函数中，它可以引用先前的参数，如下所示：
+
+#+begin_src c
+struct entry
+tester (int len, char data[len][len])
+{
+  …
+}
+#+end_src
+
+
+另外，在函数声明中（但不是函数定义中），你可以使用[*]来表示数组参数的长度可变，这样这两个声明的含义是相同的：
+
+#+begin_src c
+struct entry
+tester (int len, char data[len][len]);
+
+struct entry
+tester (int len, char data[*][*]);
+#+end_src
+
+在GNU C中，这两种形式的输入是等价的，但强调数组参数是可变长度的可能对于学习代码的人会有帮助。
+
+你还可以省略长度参数，并在函数定义中使用其他的在作用域内的变量作为长度：
+
+#+begin_src c
+struct entry
+tester (char data[*][*]);
+…
+int dataLength = 20;
+…
+struct entry
+tester (char data[dataLength][dataLength])
+{
+  …
+}
+#+end_src
+
+在GNU C中，如果你想先传递数组，然后再传递长度，你可以使用 /参数的前向声明/ ，如下所示：
+
+#+begin_src c
+struct entry
+tester (int len; char data[len][len], int len)
+{
+  …
+}
+#+end_src
+
+
+在分号之前的'int len'是参数的前向声明；它的目的是在解析数据声明时使名称len可知。
+
+
+你可以在参数列表中编写任意数量的参数前向声明。它们可以用逗号或分号分隔，但最后一个必须以分号结尾，
+后面是"真正的"参数声明。每个前向声明必须与随后的"真正"声明在参数名称和数据类型上匹配
+
+** 变长参数列表
+
+一个接受可变数量参数的函数被称为可变参数函数。在C语言中，可变参数函数必须指定至少一个具有显式声明数据类型的固定参数。
+随后可以跟随额外的参数，这些参数的数量和数据类型都可以变化。
+
+
+在函数头部，以正常的方式声明固定参数，然后写上逗号和省略号："，..."。以下是一个可变参数函数头部的示例：
+
+#+begin_src c
+int add_multiple_values (int number, ...)
+#+end_src
+
+函数体可以通过参数名称引用固定参数，但是额外的参数没有名称。在函数体内访问这些参数需要使用一些标准的宏。
+这些宏在库头文件stdarg.h中定义，因此代码必须包含该文件（使用#include指令）。
+
+在函数体中，编写以下代码来访问和处理可变参数：
+
+#+begin_src c
+va_list ap;
+va_start (ap, last_fixed_parameter);
+#+end_src
+
+这段代码声明了变量ap（你可以使用任何名称），然后设置它指向第一个额外参数之前。
+
+接下来，要获取下一个连续的额外参数，可以编写以下代码：
+
+#+begin_src c
+va_arg (ap, type)
+#+end_src
+
+在获取所有额外参数（或需要使用的参数数量）之后，可以编写以下代码：
+
+#+begin_src c
+va_end(ap, tyep)
+#+end_src
+
+
+这是一个可变参数函数的示例定义，它可以添加任意数量的整数参数。第一个（固定的）参数表示后面还有多少个参数。
+
+#+begin_src c
+#include <stdarg.h> /* Defines va… macros. */
+…
+
+int
+add_multiple_values (int argcount, ...)
+{
+  int counter, total = 0;
+
+  /* Declare a variable of type va_list. */
+  va_list argptr;
+
+  /* Initialize that variable.. */
+  va_start (argptr, argcount);
+
+  for (counter = 0; counter < argcount; counter++)
+    {
+      /* Get the next additional argument. */
+      total += va_arg (argptr, int);
+    }
+
+  /* End use of the argptr variable. */
+  va_end (argptr);
+
+  return total;
+}
+#+end_src
+
+
+在GNU C中，va_end是多余的，但其他一些编译器可能会使va_start分配内存，因此调用va_end是必要的，以避免内存泄漏。
+在再次使用相同变量进行va_start之前，先调用va_end。
+
+由于可能存在内存分配，使用赋值将一个va_list变量复制到另一个变量是有风险的（原则上）。相反，应使用va_copy函数，
+它会复制内容，并在要复制到的变量中分配单独的内存。va_copy的调用形式为va_copy(to, from)，
+其中to和from都应该是va_list类型的变量。原则上，在每个变量的作用域结束之前都应该对其调用va_end。
+
+
+由于在函数的定义中没有指定额外参数的类型，因此在函数调用中将应用默认的参数提升（参见参数提升）。
+函数定义必须考虑到这一点；因此，如果一个参数被传递为short类型，函数应该将其作为int类型接收。
+如果一个参数被传递为float类型，函数应该将其作为double类型接收。
+
+#+begin_src c
+sum = add_multiple_values (3, 12, 34, 190);
+/* Value is 12+34+190. */
+#+end_src
+
+在GNU C中，实际上没有必要使用va_end函数。事实上，它不起任何作用。它用于与其他编译器的兼容性，但在GNU C中并不需要使用它。
+
+确实，在除了上面描述的方式之外，访问声明为va_list的变量是错误的。va_list的具体实现细节是与平台相关的，可能会因平台而异。
+
+** 嵌套函数
+
+嵌套函数是在另一个函数内部定义的函数。嵌套函数的名称仅在定义它的块范围内有效。例如，下面我们定义了一个名为square的嵌套函数，
+并调用它两次：
+
+#+begin_src c
+foo (double a, double b)
+{
+  double square (double z) { return z * z; }
+
+  return square (a) + square (b);
+}
+#+end_src
+
+嵌套函数可以访问包含它的函数从开始到其定义的地方之前的所有变量。这被称为词法作用域。
+例如，下面是一个使用继承变量offset的嵌套函数的示例：
+
+#+begin_src c
+bar (int *array, int offset, int size)
+{
+  int access (int *array, int index)
+    { return array[index + offset]; }
+  int i;
+  …
+  for (i = 0; i < size; i++)
+    … access (array, i) …
+}
+#+end_src
+
+嵌套函数定义可以出现在任何自动变量声明允许的地方；也就是说，在任何块中，可以与其他声明和语句交错出现。
+
+嵌套函数的名称只在父块内可见；名称的作用域从其定义开始，持续到包含块的结束。如果嵌套函数的名称与父函数的名称相同，
+在嵌套函数的名称作用域内将无法引用父函数。
+
+
+在嵌套函数定义上使用extern或static是错误的。
+
+确实，可以通过存储嵌套函数的地址或将地址传递给另一个函数来在其名称作用域之外调用嵌套函数。你可以安全地这样做，但必须小心：
+
+#+begin_src c
+hack (int *array, int size, int addition)
+{
+  void store (int index, int value)
+    { array[index] = value + addition; }
+
+  intermediate (store, size);
+}
+#+end_src
+
+在这个例子中，函数intermediate接收store的地址作为参数。如果intermediate调用store，则给定给store的参数将用于存储到数组中。
+store还访问了hack的局部变量addition。
+
+
+在调用intermediate期间，store函数是安全的，因为hack的栈帧（包括其参数和局部变量）在调用intermediate期间仍然存在。
+
+在包含函数退出后通过其地址调用嵌套函数是有风险的。如果在一个包含的作用域级别退出后调用嵌套函数，
+并且嵌套函数引用了一些不再在作用域内的变量，它将引用包含了垃圾或其他数据的内存。冒这种风险是不明智的。
+
+GNU C编译器实现了使用一种称为"trampolines"的技术来获取嵌套函数的地址。这种技术在《Lexical Closures for C++》
+（Thomas M. Breuel，USENIX C++ Conference Proceedings，1988年10月17日至21日）一文中进行了描述。
+
+嵌套函数可以跳转到从包含函数继承的标签，前提是该标签在包含函数中显式声明过（参见局部标签）。
+这样的跳转会立即返回到包含函数，退出执行进行了goto的嵌套函数以及任何中间的函数调用。以下是一个示例：
+
+#+begin_src c
+bar (int *array, int offset, int size)
+{
+  /* Explicitly declare the label failure. */
+  __label__ failure;
+  int access (int *array, int index)
+    {
+      if (index > size)
+        /* Exit this function,
+           and return to bar. */
+        goto failure;
+      return array[index + offset];
+    }
+
+  int i;
+  …
+  for (i = 0; i < size; i++)
+    … access (array, i) …
+  …
+  return 0;
+
+ /* Control comes here from access
+    if it does the goto.  */
+ failure:
+  return -1;
+}
+#+end_src
+
+要在定义之前声明嵌套函数，可以使用auto关键字（对于函数声明而言，它本身没有实际意义；请参阅auto和register）。例如：
+
+#+begin_src c
+bar (int *array, int offset, int size)
+{
+  auto int access (int *, int);
+  …
+  … access (array, i) …
+  …
+  int access (int *array, int index)
+    {
+      …
+    }
+  …
+}
+#+end_src
+
+** 内联函数
+
+
+要声明一个内联函数，可以在其定义中使用inline关键字。下面是一个简单的内联函数示例，
+它接受一个指向整数的指针并递增存储在该地址处的整数：
+
+#+begin_src c
+struct list
+{
+  struct list *first, *second;
+};
+
+inline struct list *
+list_first (struct list *p)
+{
+  return p->first;  
+}
+
+inline struct list *
+list_second (struct list *p)
+{
+  return p->second;  
+}
+#+end_src
+
+编译器通过将调用内联函数的地方替换为内联函数的函数体的方式达到优化的目的，这种函数替换方式被成为内联。
+这使得使用内联函数的代码运行更快，尤其是如果内联函数很小的话，性能提升会非常显著。
+
+这是一个使用pair_second的函数示例：
+
+#+begin_src c
+int
+pairlist_length (struct list *l)
+{
+  int length = 0;
+  while (l)
+    {
+      length++;
+      l = pair_second (l);
+    }
+  return length;
+}
+#+end_src
+
+
+将pair_second的代码替换为pairlist_length的定义，得到以下代码：
+
+#+begin_src c
+int
+pairlist_length (struct list *l)
+{
+  int length = 0;
+  while (l)
+    {
+      length++;
+      l = l->second;
+    }
+  return length;
+}
+#+end_src
+
+由于pair_second的定义中没有使用extern或static关键字，该定义仅用于内联。它不会生成可以在运行时调用的代码。
+如果并非所有对该函数的调用都被内联展开，那么在另一个模块中必须有相同函数名的定义供这些调用使用。
+
+在内联函数定义中添加static关键字意味着函数定义仅限于该编译模块。此外，如果有任何未被内联展开的调用，
+它会生成必要的运行时代码。如果所有调用都被内联展开，那么函数定义不会生成运行时代码，
+但你可以通过选项-fkeep-inline-functions强制生成运行时代码。
+
+在内联函数中同时指定extern关键字意味着该函数是外部函数，并生成运行时代码，可以从其他单独编译的模块中调用，
+并且还可以进行内联展开。你可以在其他模块中将函数定义为内联函数而不使用extern，以便在这些模块中内联调用相同的函数。
+这样可以在需要时进行内联展开，而在其他模块中保持函数的外部可见性。
+
+有几个原因可能导致某些调用未被内联展开。首先，内联展开是一种优化技术，因此非优化的编译不会进行内联展开。
+在非优化编译中，函数调用会被保留，而不会被替换为函数体的副本。
+
+有些调用由于技术原因无法进行内联展开。此外，在函数定义中的某些用法可能会使其不适合进行内联替换。
+这些用法包括：可变参数函数、使用alloca函数、使用计算goto（参见标签作为值）、以及使用非局部goto。
+选项-Winline可以在将标记为内联的函数不适合进行内联展开时发出警告。警告将解释是什么原因使其不适合进行内联展开。
+
+确实，仅仅因为一个调用可以被内联展开，并不意味着它应该被内联展开。GNU C编译器会权衡成本和收益，
+决定是否内联展开特定的调用是否有优势。
+
+你可以通过为函数指定always_inline属性，强制将所有可以内联展开的调用都进行内联展开，即使在非优化编译中也可以。示例如下：
+
+#+begin_src c
+/* Prototype.  */
+inline void foo (const char) __attribute__((always_inline));
+#+end_src
+
+这是GNU C的扩展功能。请参阅"Attributes"（属性）部分。
+
+在特定情况下，即使函数没有声明为内联，编译器也可能对函数调用进行内联展开，前提是编译器能够确定这是正确和可取的。
+例如，当一个静态函数只被调用一次时，很可能会被内联展开。使用-flto（链接时优化）时，任何函数都可能被内联展开。
+要绝对阻止特定函数的内联展开，可以在函数的定义中指定__attribute__((noinline))。
+
+* 过时的函数特性
+
+这些函数定义的特性仍然在旧的程序中使用，但是现在不应该以这种方式编写代码。如果你正在学习C，可以跳过本节。
+
+** 过时的GNU C内联
+
+
+在GCC 5版本之前，GNU C对于内联函数的规范定义了在函数定义中使用extern inline意味着内联展开调用，
+但不生成可以在运行时调用的函数代码。相反，使用inline而没有指定extern则会生成运行时的函数代码。
+实际上，ISO标准对于这两种情况定义与GNU C相反。我们在GCC 5版本中更改了GCC，以采用ISO规范的定义。
+
+许多程序仍然使用具有先前GNU C含义的这些情况。你可以使用选项-fgnu89-inline来指定使用这些含义。
+你也可以为单个函数指定这个含义，使用__attribute__((gnu_inline))。下面是一个示例：
+
+#+begin_src c
+inline __attribute__ ((gnu_inline))
+int
+inc (int *a)
+{
+  (*a)++;
+}
+#+end_src
+
+** 老式的函数定义风格
+
+传统上，C的语法允许在函数声明中省略数据类型，如果声明中指定了存储类别或限定符，则类型默认为int。例如：
+
+#+begin_src c
+static foo (double x);
+#+end_src
+
+将函数声明中的省略数据类型的写法用于指定返回类型为int是不推荐的做法。如果你遇到这种写法，应该进行修正。
+
+一个老式（或“K&R”）的函数定义是指上世纪80年代编写函数定义的方式。它的格式如下所示：
+
+#+begin_src c
+rettype
+function (parmnames)
+  parm_declarations
+{
+  body
+}
+#+end_src
+
+在parmnames中，只列出参数名称，用逗号分隔。然后，在parm_declarations中声明它们的数据类型；
+这些声明的形式与变量声明完全相同。如果一个参数在parmnames中被列出，但没有声明，那么它会被隐式声明为int类型。
+
+现在没有理由以这种方式编写函数定义，但在旧的GNU程序中仍然可以看到这种写法。
+
+一个旧式的可变参数函数定义的样式如下所示：
+
+#+begin_src c
+#include <varargs.h>
+
+int
+add_multiple_values (va_alist)
+    va_dcl
+{
+  int argcount;
+  int counter, total = 0;
+
+  /* Declare a variable of type va_list. */
+  va_list argptr;
+
+  /* Initialize that variable. */
+  va_start (argptr);
+
+  /* Get the first argument (fixed). */
+  argcount = va_arg (int);
+
+  for (counter = 0; counter < argcount; counter++)
+    {
+      /* Get the next additional argument. */
+      total += va_arg (argptr, int);
+    }
+
+  /* End use of the argptr variable. */
+  va_end (argptr);
+
+  return total;
+}
+#+end_src
+
+请注意，旧式的可变参数函数定义没有固定的参数变量；所有参数都必须使用va_arg来获取。
