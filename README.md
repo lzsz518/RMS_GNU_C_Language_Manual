@@ -49,3 +49,5 @@ Richard Stallman的GNU C 语言手册的中文翻译，原文请见：
 
 [22 函数定义](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/22_FunctionDefinitions.org)
 
+[23 兼容类型](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/23_CompatibleTypes.org)
+
