@@ -54,3 +54,5 @@ Richard Stallman的GNU C 语言手册的中文翻译，原文请见：
 [24 类型转换](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/24_TypeConversions.org)
 
 [25 作用域](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/25_Scope.org)
+
+[26 预处理](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/26_Preprocessing.org)
