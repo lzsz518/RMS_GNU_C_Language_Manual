@@ -994,3 +994,58 @@ strange(stderr) p, 35)
 
 
 能够组合一个宏调用的能力可能很有用，但在宏主体中使用不平衡的开括号只会导致混淆，应该避免这样做。
+
+*** 运算符优先级问题
+
+你可能已经注意到，在上面显示的大多数宏定义的实例中，每个宏参数都被括号包裹。
+此外，通常还会在整个宏定义周围加上另一对括号。以下是为什么最好以这种方式编写宏的原因。
+
+假设你有一个这样的宏定义：
+
+#+begin_src c
+#define ceil_div(x, y) (x + y - 1) / y
+#+end_src
+
+其目的是进行四舍五入的除法操作。（这种操作的一个用途是计算需要多少个int对象来容纳一定数量的char对象。）
+然后，假设它被如下使用：
+
+#+begin_src c
+a = ceil_div (b & c, sizeof (int));
+     → a = (b & c + sizeof (int) - 1) / sizeof (int);
+#+end_src
+
+这不会达到预期的效果。C语言的运算符优先级规则使其等效于以下操作：
+
+#+begin_src c
+a = (b & (c + sizeof (int) - 1)) / sizeof (int);
+#+end_src
+
+但我们希望这样的效果：
+
+#+begin_src c
+a = ((b & c) + sizeof (int) - 1)) / sizeof (int);
+#+end_src
+
+这样定义宏：
+
+#+begin_src c
+#define ceil_div(x, y) ((x) + (y) - 1) / (y)
+#+end_src
+
+才能达到预期的效果。
+
+意外的分组方式可能会以另一种方式产生影响。考虑 sizeof ceil_div(1, 2)。
+它看起来像一个C表达式，用于计算 ceil_div(1, 2) 类型的大小，
+但实际上它表示了一些完全不同的意思。以下是它展开的方式：
+
+#+begin_src c
+sizeof ((1) + (2) - 1) / (2)
+#+end_src
+
+这将获取整数的大小并将其除以2。优先级规则将除法操作放在了 sizeof 的外部，而实际上它应该在内部。
+
+在整个宏定义周围加上括号可以防止出现这些问题。因此，以下是建议的定义 ceil_div 的方式：
+
+#+begin_src c
+#define ceil_div(x, y) (((x) + (y) - 1) / (y))
+#+end_src
