@@ -59,4 +59,7 @@ Richard Stallman的GNU C 语言手册的中文翻译，原文请见：
 
 [27 深入整数](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/27_IntegersInDepth.org)
 
+[28 深入浮点数](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/28_FloatingPointInDepth.org)
+
+
 
