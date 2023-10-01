@@ -310,4 +310,477 @@ sinh (x) = 2.592_352_764_293_536e+21
 
 使用`-ffp-contract=fast`选项允许生成FMA指令，或使用`-ffp-contract=off`选项禁止它。
 
+* 错误恢复
 
+当两个数字通过四种基本运算之一相结合时，结果通常需要舍入到存储精度。为了进行准确的计算，
+我们希望能够恢复舍入误差。在历史上的浮点设计中，要在可移植的方式下实现这一点是很困难的，
+但现在由于IEEE 754算术标准的普遍采用的，这项工作变得容易得多。
+
+对于使用默认的最近舍入模式进行的加法，我们可以像这样确定一个总和的误差：
+
+#+begin_src c
+volatile double err, sum, tmp, x, y;
+
+if (fabs (x) >= fabs (y))
+  {
+    sum = x + y;
+    tmp = sum - x;
+    err = y - tmp;
+  }
+else /* fabs (x) < fabs (y) */
+  {
+    sum = x + y;
+    tmp = sum - y;
+    err = x - tmp;
+  }
+#+end_src
+
+
+现在，x + y 被表示为 sum + err。这个基本操作，在数值分析文献中通常被称为 twosum，
+是跟踪和考虑舍入误差的第一个关键。
+
+要确定减法的误差，只需交换+和-运算符。
+
+在变量声明中使用了 volatile 限定符（请参阅 volatile），这会强制编译器将它们存储到内存中并从内存中检索它们，
+并阻止编译器将 err = y - ((x + y) - x) 优化为 err = 0。
+
+对于乘法，我们可以使用FMA操作（请参阅Fused Multiply-Add）来计算舍入误差，而无需进行幅值测试，如下所示：
+
+#+begin_src c
+volatile double err, prod, x, y;
+prod = x * y;                /* rounded product */
+err  = fma (x, y, -prod);    /* exact product = prod + err */
+#+end_src
+
+对于加法、减法和乘法，我们可以用两个值的概念上的总和来表示精确结果。
+然而，除法、余数或平方根的精确结果可能需要无限数量的数字，所以我们最多只能近似表示它。
+尽管如此，我们可以计算一个接近真实误差的误差项：它只是将误差值舍入到机器精度的值。
+
+对于除法，你可以这样近似表示 x / y 为 quo + err：
+
+#+begin_src c
+volatile double err, quo, x, y;
+quo = x / y;
+err = fma (-quo, y, x) / y;
+#+end_src
+
+对于平方根，我们可以用 root + err 这种方式来近似表示 sqrt(x)：
+
+#+begin_src c
+  volatile double err, root, x;
+  root = sqrt (x);
+  err = fma (-root, root, x) / (root + root);
+#+end_src
+
+有了IEEE 754算术标准提供的可靠和可预测的浮点设计，我们现在拥有了追踪五种基本浮点操作中的误差所需的工具，
+我们可以有效地模拟在两倍工作精度中进行计算，这有时足以消除几乎所有的算术错误痕迹。
+
+* 精确浮点常数
+
+自数字计算机诞生以来，数值程序员一直面临的一个令人沮丧的问题是无法在其程序中精确指定数字。
+在早期的十进制机器上，这并不是问题：您可以编写一个常量1e-30，并确信该精确值将在浮点操作中使用。
+然而，当硬件使用的基数不是10时，人为指定的数字必须转换为该基数，然后在输出时再次转换回来。
+这两次基数转换很少是精确的，会引入不必要的舍入误差。
+
+由于计算机通常以非十进制的基数表示数字，在转换过程中可能会出现舍入误差。
+在C语言中，可以使用十六进制浮点常数来解决这个问题。例如，+0x1.fffffcp-1 是最接近但小于1.0的IEEE 754 32位值。
+尾数以十六进制分数表示，而2的幂则在指数字符p之后以十进制书写（传统的指数字符e不可能使用，因为它是一个十六进制数字）。
+
+在printf、scanf以及相关函数中，您可以使用'%a'和'%A'格式说明符来写入和读取十六进制浮点值。
+'%a'使用小写字母编写它们，而'%A'则使用大写字母编写它们。例如，以下代码可以复制我们的示例数字：
+
+#+begin_src c
+printf ("%a\n", 1.0 - pow (2.0, -23));
+    -| 0x1.fffffcp-1
+#+end_src
+
+类似地，strtod系列函数也被扩展以识别那种新格式的数字。
+
+如果您希望在不同计算机上的C程序之间传输浮点数时确保精确的数据表示，那么十六进制常数是一个最佳选择。
+
+* 处理无穷大
+
+正如我们之前注意到的，IEEE 754计算模型并不是在发生异常情况时停止程序。
+它通过设置粘性异常标志或产生带有特殊值Infinity和QNaN的结果来注意异常值或条件。
+在本节中，我们讨论Infinity；有关另一个情况NaN 的处理，请参见Handling NaN。
+
+在GNU C中，您可以通过以下方式在软件中创建负无穷大的值：
+
+#+begin_src c
+double x;
+
+x = -1.0 / 0.0;
+#+end_src
+
+
+GNU C提供了__builtin_inf、__builtin_inff和__builtin_infl宏，
+而GNU C库提供了INFINITY宏，所有这些宏都是正无穷大的编译时常数。
+
+GNU C还提供了用于测试是否为无穷大的标准函数：isinf(x)如果参数是有符号无穷大则返回1，否则返回0。
+
+GNU C提供了__builtin_inf、__builtin_inff和__builtin_infl宏，而GNU C库提供了INFINITY宏，
+所有这些宏都是正无穷大的编译时常数。
+
+GNU C还提供了用于测试是否为无穷大的标准函数：isinf(x)如果参数是有符号无穷大则返回1，否则返回0。
+
+无穷大可以进行比较，所有相同符号的无穷大都是相等的：在IEEE 754算术中，没有不同类型的无穷大的概念，
+就像在数学的某些领域中那样。正无穷大大于任何有限值，而负无穷大小于任何有限值。
+
+无穷大在加法、减法、乘法和平方根中传播，但在除法中它们消失，因为有规定有限数值 / 无穷大等于0.0。
+因此，在产生无穷大的中间计算中发生的溢出可能会在最终结果中被注意到。
+程序员可以决定是否期望和接受这种溢出，或者代码可能存在错误，或者需要以更高的精度运行，
+或者需要重新设计以避免产生无穷大。
+
+* 处理 NaN
+
+NaN不是数字：它们代表来自产生未定义结果的计算的值。它们具有一种独特的特性，
+使它们与任何其他浮点值都不同：它们与一切都不相等，包括自己！因此，您可以像这样编写一个测试来检测NaN：
+
+#+begin_src c
+if (x != x)
+  printf ("x is a NaN\n");
+#+end_src
+
+这个测试在GNU C中可以工作，但有些编译器可能会将该测试表达式评估为false，而没有正确检查NaN值。
+一个更具可移植性的测试NaN的方法是使用math.h中声明的isnan函数：
+
+#+begin_src c
+if (isnan (x))
+  printf ("x is a NaN\n");
+#+end_src
+
+请查看《GNU C库参考手册》中的"浮点类别（Floating Point Classes）"。
+
+NaN的一个重要用途是标记缺失数据。例如，在统计学中，必须从计算中排除这些数据。
+使用任何特定的有限值来表示缺失数据最终会与真实数据产生冲突，而这种数据永远不可能是NaN，
+因此它是一个理想的标记。处理可能包含空白的数据集的函数可以编写以测试和忽略NaN值。
+
+在计算中很容易生成NaN：评估0.0 / 0.0是最常见的方法，但Infinity - Infinity、Infinity / Infinity和sqrt(-1.0)也可以工作。
+接收越界参数的函数可以选择返回存储的NaN值，例如在math.h中定义的NAN宏，但这不会设置无效操作异常标志，
+并且可能会误导一些程序。
+
+像Infinity一样，NaN在计算中传播，但它们更加"粘性"，因为它们在除法中永远不会消失。
+因此，一旦NaN出现在一系列数值操作中，几乎可以肯定它会弹出到最终的结果中。
+程序员必须决定是否这是预期的行为，或者是否存在需要修复的编码或算法错误。
+
+通常情况下，当函数接收到NaN参数时，它通常会返回NaN。然而，有一些例外情况需要注意，
+因为它们违反了NaN始终传播的规则：
+
+ * pow (x, 0.0) 总是返回1.0，即使 x 是 0.0、Infinity 或 NaN 也是如此。
+
+ * pow (1, y) 总是返回1，即使 y 是 NaN 也是如此。
+
+ * hypot (INFINITY, y) 和 hypot (-INFINITY, y) 都总是返回 INFINITY，即使 y 是 NaN 也是如此。
+
+ * 如果 fmax (x, y) 或 fmin (x, y) 的参数中只有一个是 NaN，它将返回另一个参数。
+   如果两个参数都是 NaN，它会返回一个 NaN，但没有规定它来自哪个参数：它可能是 x，也可能是 y，
+   或者是其他某个 quiet NaN。
+
+NaNs还用于数学库函数的返回值，其中结果在实际算术中无法表示，或在数学上是未定义的或不确定的，
+例如sqrt(-1.0)和sin(Infinity)。然而，请注意，仅仅是太大而无法表示的结果应该总是产生Infinity，
+例如exp(1000.0)（太大了）和exp(Infinity)（真正的无穷大）。
+
+* 有符号0
+
+零的符号是重要的，因为它记录了一个值的产生，这个值太小而无法表示，但它可以来自负轴或正轴。
+在复数算术中（参见复数算术），这些微妙的区别对于正确处理分支切割非常重要。
+
+关于有符号零的关键点在于，在比较中，它们的符号并不重要：0.0 == -0.0 必须始终评估为1（真）。
+然而，它们并不是相同的数字，而在C代码中，-0.0 表示负零。
+
+* 按基数的幂进行缩放
+
+我们在本章中已经多次讨论了舍入误差，但重要的是要记住，当结果所需的位数不超过指数和尾数位数可以表示的范围时，
+这些结果是精确的。
+
+其中一种特别有用的精确操作是按基数的幂进行缩放。虽然原则上可以使用如下代码来进行这种操作：
+
+#+begin_src c
+y = x * pow (2.0, (double)k);   /* Undesirable scaling: avoid! */
+#+end_src
+
+这并不建议，因为它依赖于数学库中幂函数的质量，而幂函数恰好是C数学库中最难精确计算的函数之一。
+在许多系统上，pow返回的值可能接近某个二的幂，但略有不同，因此随后的乘法会引入舍入误差。
+
+正确且速度最快的缩放方式要么是通过传统的C库函数，要么是通过它的C99等效函数：
+
+#+begin_src c
+y = ldexp (x, k);            /* Traditional pre-C99 style. */
+y = scalbn (x, k);           /* C99 style. */
+#+end_src
+
+这两个函数都返回 x * 2**k。请参阅《GNU C库参考手册》中的"归一化函数（Normalization Functions）"。
+
+* 舍入控制
+
+以下是如何在运行时指定舍入模式的描述。系统头文件fenv.h提供了这些函数的原型。
+请参阅《GNU C库参考手册》中的"舍入（Rounding）"部分。
+
+该头文件还提供了四种舍入模式的常量名称：FE_DOWNWARD、FE_TONEAREST、FE_TOWARDZERO和FE_UPWARD。
+
+函数fegetround检查并返回当前的舍入模式。在具有IEEE 754浮点的平台上，该值将始终等于这四个常量中的一个。
+在其他平台上，它可能返回一个负值。函数fesetround设置当前的舍入模式。
+
+更改舍入模式可能会很慢，因此有用的是尽量减少更改的次数。对于区间算术，
+每个操作似乎需要三次更改，但实际上只需要两次，因为我们可以编写如下示例中的代码来对两个实数进行区间加法：
+
+#+begin_src c
+{
+  struct interval_double
+    {
+      double hi, lo;
+    } v;
+  volatile double x, y;
+  int rule;
+
+  rule = fegetround ();
+
+  if (fesetround (FE_UPWARD) == 0)
+    {
+      v.hi = x + y;
+      v.lo = -(-x - y);
+    }
+  else
+    fatal ("ERROR: failed to change rounding rule");
+
+  if (fesetround (rule) != 0)
+    fatal ("ERROR: failed to restore rounding rule");
+}
+#+end_src
+
+在x86平台上，使用volatile限定符（参见volatile）对于防止优化编译器生成相同的边界值非常重要。
+
+* 机器精度
+
+在任何浮点系统中，了解三个特别重要的属性是很重要的：基数（指数指定的幂次数）、
+精度（尾数中的数字位数）和范围（最大正数和最小负数之间的差值）。在指数和尾数之间分配比特位决定了这些问题的答案。
+
+精度的度量是回答以下问题的答案：对于1.0，可以添加的最小数是多少，以使总和与1.0不同？这个数称为机器ε（epsilon）。
+
+我们可以像这样定义float、double和long double所需的机器精度常量：
+
+#+begin_src c
+static const float  epsf = 0x1p-23;  /* about 1.192e-07 */
+static const double eps  = 0x1p-52;  /* about 2.220e-16 */
+static const long double epsl = 0x1p-63;  /* about 1.084e-19 */
+#+end_src
+
+
+除了十六进制常数之外，我们还可以使用标准C宏FLT_EPSILON、DBL_EPSILON和LDBL_EPSILON。
+
+能够在运行时计算机器精度（epsilon）是很有用的，我们可以通过将常数1.0替换为用户提供的值来轻松地将操作推广为通用操作：
+
+#+begin_src c
+double
+macheps (double x)
+{ /* Return machine epsilon for x,  */
+      such that x + macheps (x) > x.  */
+  static const double base = 2.0;
+  double eps;
+
+  if (isnan (x))
+      eps = x;
+  else
+    {
+      eps = (x == 0.0) ? 1.0 : x;
+
+      while ((x + eps / base) != x)
+          eps /= base;          /* Always exact!  */
+    }
+
+  return (eps);
+}
+#+end_src
+
+如果我们用从0到10的参数以及Infinity和NaN调用该函数，并以十六进制打印返回的值，我们会得到如下输出：
+
+#+begin_src c
+macheps (  0) = 0x1.0000000000000p-1074
+macheps (  1) = 0x1.0000000000000p-52
+macheps (  2) = 0x1.0000000000000p-51
+macheps (  3) = 0x1.8000000000000p-52
+macheps (  4) = 0x1.0000000000000p-50
+macheps (  5) = 0x1.4000000000000p-51
+macheps (  6) = 0x1.8000000000000p-51
+macheps (  7) = 0x1.c000000000000p-51
+macheps (  8) = 0x1.0000000000000p-49
+macheps (  9) = 0x1.2000000000000p-50
+macheps ( 10) = 0x1.4000000000000p-50
+macheps (Inf) = infinity
+macheps (NaN) = nan
+#+end_src
+
+请注意，`macheps` 函数中对 NaN 进行了特殊测试，以防止无限循环。
+
+我们的代码对参数值是否为零单独使用了一个条件，以避免得到零的返回值。在这种情况下，
+返回的值是可表示的最小浮点数，即亚标准值2**(-1074)，约为4.941e-324。
+
+对于Infinity，不需要进行特殊测试，因为eps缩减循环在第一次迭代时终止。
+
+我们这里的 `macheps` 函数假定了二进制浮点；某些体系结构可能有所不同。
+
+C库中包括一些相关的函数，也可以用于在运行时确定机器ε（epsilon）：
+
+#+begin_src c
+#include <math.h>           /* Include for these prototypes. */
+
+double      nextafter  (double x, double y);
+float       nextafterf (float x, float y);
+long double nextafterl (long double x, long double y);
+#+end_src
+
+这些函数返回在方向y上最接近x的机器数。例如，nextafter(1.0, 2.0)
+产生的结果与 1.0 + macheps(1.0) 和 1.0 + DBL_EPSILON 相同。
+请参阅《GNU C库参考手册》中的 "FP Bit Twiddling" 部分。
+
+重要的是要知道，机器ε（epsilon）并不在所有数字周围对称。在规范化改变指数的边界上，
+x下面的ε小于x上面的ε，差异因子为1 / 基数。例如，macheps(1.0) 返回 +0x1p-52，
+而macheps(-1.0) 返回 +0x1p-53。一些作者通过称它们为正负或大小机器ε来区分这些情况。您可以像这样计算它们的值：
+
+#+begin_src c
+eps_neg = 1.0 - nextafter (1.0, -1.0);
+eps_pos = nextafter (1.0, +2.0) - 1.0;
+#+end_src
+
+如果x是一个变量，因此在编译时无法确定其值，那么您可以将字面值y值替换为-either -inf() 或 +inf()，就像这样：
+
+#+begin_src c
+eps_neg = x - nextafter (x, -inf ());
+eps_pos = nextafter (x, +inf() - x);
+#+end_src
+
+在这种情况下，如果x是Infinity，那么nextafter函数如果x等于y，它们会返回y。
+然后，我们的两个赋值会分别为eps_neg生成+0x1.fffffffffffffp+1023（约为1.798e+308），
+而为eps_pos生成Infinity。因此，调用nextafter(INFINITY, -INFINITY)可用于查找最大可表示的有限数，
+而调用nextafter(0.0, 1.0)可用于找到最小可表示的数（在这里是0x1p-1074，约为4.491e-324，
+我们之前从macheps(0.0)的输出中看到过这个数字）。
+
+* 复数算数
+
+我们已经讨论了定义和引用复数（请参见复杂数据类型）。这里需要讨论的重要问题是，
+对于没有广泛数值计算和数学复数运算经验的程序员来说，一些问题可能不太明显。
+
+第一个重要点是，与实数算术不同，复数算术中的有效数字丢失危险是普遍存在的，
+并影响到所有基本操作以及几乎所有数学库函数。要理解为什么会这样，回想一下复数乘法和除法的规则：
+
+#+begin_src c
+a = u + I*v              /* First operand. */
+b = x + I*y              /* Second operand. */
+
+prod = a * b
+     = (u + I*v) * (x + I*y)
+     = (u * x - v * y) + I*(v * x + u * y)
+
+quo  = a / b
+     = (u + I*v) / (x + I*y)
+     = [(u + I*v) * (x - I*y)] / [(x + I*y) * (x - I*y)]
+     = [(u * x + v * y) + I*(v * x - u * y)] / (x**2 + y**2)
+#+end_src
+
+对于这些公式，有四个关键观察点：
+
+ * 右侧的乘法引入了过早下溢或上溢的可能性；
+
+ * 这些乘积必须精确到两倍的工作精度；
+
+ * 右侧总是有一次减法可能会导致严重的有效数字丢失；
+
+ * 复数乘法有高达六个舍入误差，复数除法有十个舍入误差。
+
+还需要仔细研究的另一个问题是复数算术中许多函数都具有分支切。您可以将具有复数参数的函数
+f (z) 视为 f (x + I*y)，因此，它定义了复平面上点 (x, y) 与表面上的一个高度值之间的关系。
+分支切看起来像是表面上的一处撕裂，因此从一侧接近切会产生一个特定的值，而从另一侧接近则会产生一个完全不同的值。
+需要非常小心地处理分支切，即使小的数值误差也可能将结果从一侧推到另一侧，从而根本改变了返回值。
+正如我们之前提到的，正确处理零的符号对于在分支切附近进行计算至关重要。
+
+对于需要复数算术的程序员，我们可以提供的最好建议是始终使用可用的最高精度，然后仔细检查测试计算的结果，
+以评估计算结果的可能精度。很容易提供实部和虚部的测试值，
+其中复数算术中的所有五个基本操作和几乎所有复杂数学函数都失去了所有有效数字，无法产生一个正确的数字。
+
+尽管复数算术使一些编程任务变得更容易，但从数值上讲，重新设计算法以在实数算术中执行可能更可取。
+这在矩阵代数中通常是可能的。
+
+如果不需要某些边界检查，GNU C可以对复数乘法和除法进行代码优化。命令行选项 -fcx-limited-range 告诉编译器，
+在执行复数除法时不需要范围缩减步骤，也不需要检查复数乘法或除法是否会导致值 Nan + I*NaN。
+默认情况下，这些检查是启用的。您可以使用 -fno-cx-limited-range 选项显式禁用它们。
+
+* 往复进制转换
+
+大多数数值程序涉及在计算机表示的二进制浮点数和程序员输入和处理的基十浮点数之间进行转换。
+可能不太明显的是，每种表示所需的二进制比特数与十进制数字的数量。
+考虑以下表格，显示了在给定位数的情况下可以表示的十进制数字数量，以及反之亦然：
+
+#+begin_src c
+binary in	24	53	64	113	237
+decimal out	9	17	21	36	73
+decimal in	7	16	34	70
+binary out	25	55	114	234
+#+end_src
+
+我们可以使用以下两个函数计算表格中的数字：
+
+#+begin_src c
+int
+matula(int nbits)
+{   /* Return output decimal digits needed for nbits-bits input. */
+    return ((int)ceil((double)nbits / log2(10.0) + 1.0));
+}
+
+int
+goldberg(int ndec)
+{   /* Return output bits needed for ndec-digits input. */
+    return ((int)ceil((double)ndec / log10(2.0) + 1.0));
+}
+#+end_src
+
+从这些数字中可以得出一个重要观察结果，那就是在相同的存储大小内，
+我们无法实现十进制和二进制格式之间的正确往返转换！例如，
+我们需要25位来表示32位十进制格式中的7位值，但二进制格式只有24位可用。对于其他每一对转换，类似的观察都成立。
+
+一般的输入/输出进制转换问题非常复杂，直到1990年才公开知晓解决方法，
+这些解决方法在本章末尾附近的两篇论文中列出。对于128位格式，最坏情况需要超过11,500位的十进制精度，
+以确保在二进制到十进制的转换中正确舍入！
+
+有关更多详细信息，请参阅Bennett Goldberg和David Matula的参考文献。
+
+* 进阶阅读
+
+浮点算术的主题比许多程序员似乎认为的要复杂得多，而且很少有编程语言的书籍在这个领域花费太多时间。
+在本章中，我们尝试向读者介绍一些关键思想，并警告可能被轻视的陷阱，这些陷阱很快就会导致荒谬的结果。
+有一些我们推荐的良好参考书，可以供进阶阅读，以及查找有关计算机算术的其他重要材料：
+
+ * Paul H. Abbott and 15 others, Architecture and software support in IBM S/390 Parallel Enterprise Servers for IEEE Floating-Point arithmetic, IBM Journal of Research and Development 43(5/6) 723–760 (1999), https://doi.org/10.1147/rd.435.0723. This article gives a good description of IBM’s algorithm for exact decimal-to-binary conversion, complementing earlier ones by Clinger and others.
+
+ * Nelson H. F. Beebe, The Mathematical-Function Computation Handbook: Programming Using the MathCW Portable Software Library, Springer (2017), ISBN 3-319-64109-3 (hardcover), 3-319-64110-7 (e-book) (xxxvi + 1114 pages), https://doi.org/10.1007/978-3-319-64110-2. This book describes portable implementations of a large superset of the mathematical functions available in many programming languages, extended to a future 256-bit format (70 decimal digits), for both binary and decimal floating point. It includes a substantial portion of the functions described in the famous NIST Handbook of Mathematical Functions, Cambridge (2018), ISBN 0-521-19225-0. See http://www.math.utah.edu/pub/mathcw for compilers and libraries.
+
+ * William D. Clinger, How to Read Floating Point Numbers Accurately, ACM SIGPLAN Notices 25(6) 92–101 (June 1990), https://doi.org/10.1145/93548.93557. See also the papers by Steele & White.
+
+ * William D. Clinger, Retrospective: How to read floating point numbers accurately, ACM SIGPLAN Notices 39(4) 360–371 (April 2004), http://doi.acm.org/10.1145/989393.989430. Reprint of 1990 paper, with additional commentary.
+
+ * I. Bennett Goldberg, 27 Bits Are Not Enough For 8-Digit Accuracy, Communications of the ACM 10(2) 105–106 (February 1967), http://doi.acm.org/10.1145/363067.363112. This paper, and its companions by David Matula, address the base-conversion problem, and show that the naive formulas are wrong by one or two digits.
+
+ * David Goldberg, What Every Computer Scientist Should Know About Floating-Point Arithmetic, ACM Computing Surveys 23(1) 5–58 (March 1991), corrigendum 23(3) 413 (September 1991), https://doi.org/10.1145/103162.103163. This paper has been widely distributed, and reissued in vendor programming-language documentation. It is well worth reading, and then rereading from time to time.
+
+ * Norbert Juffa and Nelson H. F. Beebe, A Bibliography of Publications on Floating-Point Arithmetic, http://www.math.utah.edu/pub/tex/bib/fparith.bib. This is the largest known bibliography of publications about floating-point, and also integer, arithmetic. It is actively maintained, and in mid 2019, contains more than 6400 references to original research papers, reports, theses, books, and Web sites on the subject matter. It can be used to locate the latest research in the field, and the historical coverage dates back to a 1726 paper on signed-digit arithmetic, and an 1837 paper by Charles Babbage, the intellectual father of mechanical computers. The entries for the Abbott, Clinger, and Steele & White papers cited earlier contain pointers to several other important related papers on the base-conversion problem.
+
+ * William Kahan, Branch Cuts for Complex Elementary Functions, or Much Ado About Nothing’s Sign Bit, (1987), http://people.freebsd.org/~das/kahan86branch.pdf. This Web document about the fine points of complex arithmetic also appears in the volume edited by A. Iserles and M. J. D. Powell, The State of the Art in Numerical Analysis: Proceedings of the Joint IMA/SIAM Conference on the State of the Art in Numerical Analysis held at the University of Birmingham, 14–18 April 1986, Oxford University Press (1987), ISBN 0-19-853614-3 (xiv + 719 pages). Its author is the famous chief architect of the IEEE 754 arithmetic system, and one of the world’s greatest experts in the field of floating-point arithmetic. An entire generation of his students at the University of California, Berkeley, have gone on to careers in academic and industry, spreading the knowledge of how to do floating-point arithmetic right.
+
+ * Donald E. Knuth, A Simple Program Whose Proof Isn’t, in Beauty is our business: a birthday salute to Edsger W. Dijkstra, W. H. J. Feijen, A. J. M. van Gasteren, D. Gries, and J. Misra (eds.), Springer (1990), ISBN 1-4612-8792-8, https://doi.org/10.1007/978-1-4612-4476-9. This book chapter supplies a correctness proof of the decimal to binary, and binary to decimal, conversions in fixed-point arithmetic in the TeX typesetting system. The proof evaded its author for a dozen years.
+
+ * David W. Matula, In-and-out conversions, Communications of the ACM 11(1) 57–50 (January 1968), https://doi.org/10.1145/362851.362887.
+
+ * David W. Matula, The Base Conversion Theorem, Proceedings of the American Mathematical Society 19(3) 716–723 (June 1968). See also other papers here by this author, and by I. Bennett Goldberg.
+
+ * David W. Matula, A Formalization of Floating-Point Numeric Base Conversion, IEEE Transactions on Computers C-19(8) 681–692 (August 1970), https://doi.org/10.1109/T-C.1970.223017.
+
+ * Jean-Michel Muller and eight others, Handbook of Floating-Point Arithmetic, Birkhäuser-Boston (2010), ISBN 0-8176-4704-X (xxiii + 572 pages), https://doi.org/10.1007/978-0-8176-4704-9. This is a comprehensive treatise from a French team who are among the world’s greatest experts in floating-point arithmetic, and among the most prolific writers of research papers in that field. They have much to teach, and their book deserves a place on the shelves of every serious numerical programmer.
+
+ * Jean-Michel Muller and eight others, Handbook of Floating-Point Arithmetic, Second edition, Birkhäuser-Boston (2018), ISBN 3-319-76525-6 (xxv + 627 pages), https://doi.org/10.1007/978-3-319-76526-6. This is a new edition of the preceding entry.
+
+ * Michael Overton, Numerical Computing with IEEE Floating Point Arithmetic, Including One Theorem, One Rule of Thumb, and One Hundred and One Exercises, SIAM (2001), ISBN 0-89871-482-6 (xiv + 104 pages), http://www.ec-securehost.com/SIAM/ot76.html. This is a small volume that can be covered in a few hours.
+
+ * Guy L. Steele Jr. and Jon L. White, How to Print Floating-Point Numbers Accurately, ACM SIGPLAN Notices 25(6) 112–126 (June 1990), https://doi.org/10.1145/93548.93559. See also the papers by Clinger.
+
+ * Guy L. Steele Jr. and Jon L. White, Retrospective: How to Print Floating-Point Numbers Accurately, ACM SIGPLAN Notices 39(4) 372–389 (April 2004), http://doi.acm.org/10.1145/989393.989431. Reprint of 1990 paper, with additional commentary.
+
+ * Pat H. Sterbenz, Floating Point Computation, Prentice-Hall (1974), ISBN 0-13-322495-3 (xiv + 316 pages). This often-cited book provides solid coverage of what floating-point arithmetic was like before the introduction of IEEE 754 arithmetic.
