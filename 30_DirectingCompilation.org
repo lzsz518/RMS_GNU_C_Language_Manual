@@ -1,0 +1,276 @@
+#+title: 指示编译
+
+本章描述一种不会改变C语言程序本身而是指导编译器如何编译程序的程序构造。
+
+* Pragmas 指令
+
+pragma是程序中用于指导编译器的注释。
+
+** Pragma 基本用法
+
+C定义了两种语法形式的预处理指令，即行形式和标记形式。您可以以相同的含义将任何预处理指令写成这两种形式之一。
+
+行形式是源代码中的一行，如下所示：
+
+#+begin_src c
+#pragma line
+#+end_src
+
+行形式的预处理指令对其周围的行的解析没有影响。这种形式的缺点是无法通过宏扩展生成。
+
+标记形式是一系列标记（tokens）；它可以出现在程序的任何地方，位于其他标记之间。
+
+#+begin_src c
+_Pragma (stringconstant)
+#+end_src
+
+预处理指令对其周围标记的语法没有影响；因此，在if语句中可以有一个预处理指令：
+
+#+begin_src c
+if _Pragma ("hello") (x > 1)
+#+end_src
+
+然而，这样做不太清晰；为了可读性，最好将预处理指令放在一行中，而不是嵌在另一个结构的中间。
+
+预处理指令的两种形式都有一个文本参数。在行形式的预处理指令中，文本就是该行的其余部分。
+而在 _Pragma 的文本参数中，文本的语法与C字符串常量相同：将文本用两个双引号字符括起来，
+并在其中的每个双引号或反斜杠字符前加上一个反斜杠。
+
+无论使用哪种语法，文本参数都指定了要执行的操作。它以一个或多个单词开头，这些单词指定了操作。
+如果编译器不识别它们，它将忽略该预处理指令。
+
+以下是GNU C支持的预处理指令操作。
+
+#+begin_src c
+#pragma GCC dependency "file" [message]
+_Pragma ("GCC dependency \"file\" [message]")
+#+end_src
+
+声明当前源文件依赖于文件file，因此GNU C会比较文件的时间戳，并在文件file比当前源文件新的情况下发出警告。
+
+此指令会像 #include 寻找非系统头文件一样来搜索文件。
+
+如果提供了message，警告消息将包括该文本。
+
+示例：
+
+#+begin_src c
+#pragma GCC dependency "parse.y"
+_pragma ("GCC dependency \"/usr/include/time.h\" \
+rerun fixincludes")
+#+end_src
+
+#pragma GCC poison identifiers
+_Pragma ("GCC poison identifiers")
+
+  使列出的标识符成为无效标识符。
+
+  这在确保程序中已删除所有对标识符的提及并且不会重新引用它们时非常有用。
+  如果在该指令之后的源代码中出现了这些标识符中的任何一个，将导致编译错误。例如，
+
+  #pragma GCC poison printf sprintf fprintf
+  sprintf(some_string, "hello");
+
+  生成一个错误。
+
+  如果一个被禁用的标识符出现在在标识符被禁用之前定义的宏扩展的一部分中，它不会导致错误。
+  因此，定义了使用该标识符的宏的系统头文件不会导致错误。 
+
+  例如：
+
+  #+begin_src c
+  #define strrchr rindex
+  _Pragma ("GCC poison rindex")
+  strrchr(some_string, 'h');
+  #+end_src
+
+  不会导致编译错误。
+
+#pragma GCC system_header
+_Pragma ("GCC system_header")
+
+  指定将当前源文件的其余部分视为来自系统头文件。请参阅GNU编译器集合使用中的系统头文件。
+
+#pragma GCC warning message
+_Pragma ("GCC warning message")
+
+  等效于 #warning。它的优点是 _Pragma 形式可以包含在宏定义中。
+
+#pragma GCC error message
+_Pragma ("GCC error message")
+
+等效于 #error。它的优点是 _Pragma 形式可以包含在宏定义中。
+
+#pragma GCC message message
+_Pragma ("GCC message message")
+
+类似于'GCC warning'和'GCC error'，这只是打印一个信息消息，可以用来包含额外的警告或错误文本，
+而不会触发更多的警告或错误。（请注意，与'warning'和'error'不同，'message'不包括'GCC'作为预处理指令的一部分。）
+
+** 严重性预处理指令
+
+这些预处理指令控制一类诊断信息的严重性级别。您可以使用导致生成这些诊断信息的GCC选项来指定诊断信息的类别。
+
+#pragma GCC diagnostic error option
+_Pragma ("GCC diagnostic error option")
+
+  对于跟在此预处理指令后的代码，将由选项指定的类型的诊断信息视为错误。例如：
+
+  _Pragma ("GCC diagnostic error -Wformat")
+
+  指定将由 -Wformat 选项启用的诊断信息视为错误而不是警告。
+
+#pragma GCC diagnostic warning option
+_Pragma ("GCC diagnostic warning option")
+
+  对于跟在此预处理指令后的代码，将由选项指定的类型的诊断信息视为警告。
+  这会覆盖 -Werror 选项，该选项表示将警告视为错误。
+
+#pragma GCC diagnostic ignore option
+_Pragma ("GCC diagnostic ignore option")
+
+  对于跟在此预处理指令后的代码，请不要报告由选项指定的任何诊断信息。
+
+
+#pragma GCC diagnostic push
+_Pragma ("GCC diagnostic push")
+#pragma GCC diagnostic pop
+_Pragma ("GCC diagnostic pop")
+
+  这些预处理指令维护了一个用于严重性设置的状态堆栈。'GCC diagnostic push' 将当前设置保存在堆栈上，
+  而 'GCC diagnostic pop' 弹出堆栈的最后一项，并从中恢复当前的设置。
+
+  当严重性设置堆栈为空时，'GCC diagnostic pop' 将设置恢复为编译开始时的设置。
+
+  以下是一个示例：
+
+#+begin_src c
+_Pragma ("GCC diagnostic error -Wformat")
+
+/* -Wformat messages treated as errors.  */
+
+_Pragma ("GCC diagnostic push")
+_Pragma ("GCC diagnostic warning -Wformat")
+
+/* -Wformat messages treated as warnings.  */
+
+_Pragma ("GCC diagnostic push")
+_Pragma ("GCC diagnostic ignored -Wformat")
+
+/* -Wformat messages suppressed.  */
+
+_Pragma ("GCC diagnostic pop")
+
+/* -Wformat messages treated as warnings again.  */
+
+_Pragma ("GCC diagnostic pop")
+
+/* -Wformat messages treated as errors again.  */
+
+/* This is an excess ‘pop’ that matches no ‘push’.  */
+_Pragma ("GCC diagnostic pop")
+
+/* -Wformat messages treated once again
+   as specified by the GCC command-line options.  */
+#+end_src
+
+** 优化指令
+
+这些预处理指令为特定的函数定义启用了特定的优化。这些设置在函数定义结束时生效，
+因此使用这些预处理指令的最佳位置是在函数定义之间。
+
+#pragma GCC optimize optimization
+_Pragma ("GCC optimize optimization")
+
+  这些预处理指令为接下来的函数启用了特定的优化。例如，
+
+  _Pragma ("GCC optimize -fforward-propagate")
+
+  指定应用“forward-propagate” 优化到所有接下来的函数定义。为个别函数指定优化，
+  而不是为整个程序指定，是不常见的，但可以用于解决编译器中的错误。
+
+  如果优化与已定义的优化选项不对应，则预处理指令是错误的。要关闭优化，
+  使用相应的‘-fno-’ 选项，例如 ‘-fno-forward-propagate’。
+
+#pragma GCC target optimizations
+_Pragma ("GCC target optimizations")
+
+  预处理指令 'GCC target' 类似于 'GCC optimize'，但用于平台特定的优化。因此，如下所示：
+
+  _Pragma ("GCC target popcnt")
+
+  激活了所有后续函数定义的优化 'popcnt'。该优化在一些常见的目标平台上受支持，但在其他平台上不受支持。 
+
+#pragma GCC push_options
+_Pragma ("GCC push_options")
+
+  预处理指令 'push_options' 将使用 'target' 和 'optimize' 预处理指令指定的当前设置保存在堆栈上。
+
+#pragma GCC pop_options
+_Pragma ("GCC pop_options")
+
+
+  预处理指令 'pop_options' 从该堆栈中弹出保存的设置。
+
+  以下是使用此堆栈的示例。
+
+  _Pragma ("GCC push_options")
+  _Pragma ("GCC optimize forward-propagate")
+
+  /* Functions to compile
+     with the forward-propagate optimization. */
+
+  _Pragma ("GCC pop_options")
+  /* Ends enablement of forward-propagate. */
+
+#pragma GCC reset_options
+_Pragma ("GCC reset_options")
+
+  清除所有由预处理指令定义的 'target' 和 'optimize' 优化设置。
+
+* 静态断言
+
+您可以使用 _Static_assert 在代码中添加编译时的必要条件测试。
+例如，这可以用来检查编译目标平台是否支持代码所期望的类型大小。例如，
+
+#+begin_src c
+_Static_assert ((sizeof (long int) >= 8),
+    "long int needs to be at least 8 bytes");
+#+end_src
+
+如果在具有小于8字节的长整数的系统上编译，它会报告编译时错误，错误消息为 'long int needs to be at least 8 bytes'。
+
+由于 _Static_assert 调用在编译时处理，因此表达式必须在编译时可计算，
+并且错误消息必须是文字字符串。表达式可以引用变量的大小，但不能引用它们的值。例如，以下静态断言无效，有两个原因：
+
+#+begin_src c
+char *error_message
+  = "long int needs to be at least 8 bytes";
+int size_of_long_int = sizeof (long int);
+
+_Static_assert (size_of_long_int == 8, error_message);
+#+end_src
+
+表达式 size_of_long_int == 8 在编译时无法计算，并且错误消息不是文字字符串。
+
+不过，您可以使用预处理器定义值与 _Static_assert 一起使用：
+
+#+begin_src c
+#define LONG_INT_ERROR_MESSAGE "long int needs to be \
+at least 8 bytes"
+
+_Static_assert ((sizeof (long int) == 8),
+  LONG_INT_ERROR_MESSAGE);
+#+end_src
+
+静态断言允许在任何允许语句或声明的地方使用，包括在文件的顶层，也可以在类型定义的内部使用。
+
+#+begin_src c
+union y
+{
+  int i;
+  int *ptr;
+  _Static_assert (sizeof (int *) == sizeof (int),
+		  "Pointer and int not same size");
+};
+#+end_src
