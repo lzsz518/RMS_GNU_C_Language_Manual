@@ -61,5 +61,8 @@ Richard Stallman的GNU C 语言手册的中文翻译，原文请见：
 
 [28 深入浮点数](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/28_FloatingPointInDepth.org)
 
+[29 编译](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/29_Compilation.org)
+
+[30 指示编译](https://github.com/lzsz518/RMS_GNU_C_Language_Manual/blob/main/30_DirectingCompilation.org)
 
 
